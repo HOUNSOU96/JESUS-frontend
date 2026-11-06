@@ -109,7 +109,7 @@ const Inscription: React.FC = () => {
     setLoadingForm(true);
 
     try {
-      const response = await api.post("/register", formData);
+      const response = await api.post("/api/auth/register", formData);
       setMatricule(response.data.matricule); // Le matricule renvoyé par le backend
     } catch (err: any) {
       console.error(err);
