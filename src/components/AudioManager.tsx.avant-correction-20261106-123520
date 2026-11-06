@@ -1,0 +1,288 @@
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+// Playlist des sept musiques
+const audioPlaylist = [
+  "/sounds/e1.mp3",
+  "/sounds/e2.mp3",
+  "/sounds/e3.mp3",
+  "/sounds/e4.mp3",
+  "/sounds/e5.mp3",
+  "/sounds/e6.mp3",
+  "/sounds/e7.mp3",
+];
+
+// Pages sur lesquelles la musique doit être arrêtée
+const shouldPauseAudio = [
+  "/accueil",
+  "/inscription",
+  "/remediationvideo",
+];
+
+const AudioManager: React.FC = () => {
+  const location = useLocation();
+
+  // Références du lecteur audio
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackRef = useRef<number>(-1);
+
+  // Gestion des différents types de pause
+  const userPausedRef = useRef<boolean>(false);
+  const pausedByRouteRef = useRef<boolean>(false);
+
+  // Gestion du minuteur des notifications
+  const notificationTimerRef = useRef<number | null>(null);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  // Affichage des notifications
+  const showNotification = useCallback((message: string) => {
+    setNotification(message);
+
+    if (notificationTimerRef.current !== null) {
+      window.clearTimeout(notificationTimerRef.current);
+    }
+
+    notificationTimerRef.current = window.setTimeout(() => {
+      setNotification(null);
+      notificationTimerRef.current = null;
+    }, 3000);
+  }, []);
+
+  // Vérifier si la page actuelle est exclue
+  const isExcludedPath = (path: string): boolean => {
+    const normalizedPath = path.toLowerCase();
+
+    return shouldPauseAudio.some(
+      (excludedPath) =>
+        normalizedPath === excludedPath ||
+        normalizedPath.startsWith(excludedPath + "/")
+    );
+  };
+
+  // Initialisation du lecteur audio
+  useEffect(() => {
+    const audio = new Audio();
+
+    audio.preload = "auto";
+    audio.loop = false;
+    audio.volume = 0.7;
+
+    // Choisir le premier morceau aléatoirement
+    const initialIndex = Math.floor(
+      Math.random() * audioPlaylist.length
+    );
+
+    currentTrackRef.current = initialIndex;
+    audio.src = audioPlaylist[initialIndex];
+
+    audioRef.current = audio;
+
+    // Synchroniser l'état React avec le lecteur audio
+    const handlePlay = () => {
+      setIsPlaying(true);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+
+    // Choisir un nouveau morceau sans répéter immédiatement
+    const handleEnded = () => {
+      if (userPausedRef.current || pausedByRouteRef.current) {
+        return;
+      }
+
+      let nextIndex = currentTrackRef.current;
+
+      if (audioPlaylist.length > 1) {
+        while (nextIndex === currentTrackRef.current) {
+          nextIndex = Math.floor(
+            Math.random() * audioPlaylist.length
+          );
+        }
+      }
+
+      currentTrackRef.current = nextIndex;
+
+      audio.src = audioPlaylist[nextIndex];
+      audio.load();
+
+      audio.play().catch((error: unknown) => {
+        setIsPlaying(false);
+
+        console.error(
+          "Erreur lors du passage au morceau suivant :",
+          error
+        );
+
+        showNotification(
+          "⚠️ Impossible de lire le morceau suivant."
+        );
+      });
+    };
+
+    // Détecter les erreurs de chargement
+    const handleError = () => {
+      setIsPlaying(false);
+
+      console.error(
+        "Erreur de chargement audio :",
+        audio.currentSrc || audio.src,
+        audio.error
+      );
+
+      showNotification("⚠️ Erreur de chargement de la musique.");
+    };
+
+    // Enregistrer les événements
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    console.info(
+      "AudioManager initialisé. Premier morceau :",
+      audioPlaylist[initialIndex]
+    );
+
+    // Nettoyage des ressources et des événements
+    return () => {
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
+
+      setIsPlaying(false);
+    };
+  }, [showNotification]);
+
+  // Gestion automatique selon la navigation
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) return;
+
+    const excluded = isExcludedPath(location.pathname);
+
+    if (excluded) {
+      pausedByRouteRef.current = true;
+
+      if (!audio.paused) {
+        audio.pause();
+      }
+
+      return;
+    }
+
+    // On quitte une page exclue
+    pausedByRouteRef.current = false;
+
+    // Respecter une pause volontaire de l'utilisateur
+    if (userPausedRef.current) {
+      return;
+    }
+
+    // Première lecture ou reprise automatique autorisée
+    if (audio.paused) {
+      audio.play().catch((error: unknown) => {
+        setIsPlaying(false);
+
+        console.warn(
+          "Lecture automatique refusée par le navigateur :",
+          error
+        );
+      });
+    }
+  }, [location.pathname]);
+
+  // Bouton Play / Pause
+  const handleToggleAudio = () => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      showNotification("⚠️ Lecteur audio indisponible.");
+      return;
+    }
+
+    if (audio.paused) {
+      userPausedRef.current = false;
+      pausedByRouteRef.current = false;
+
+      audio
+        .play()
+        .then(() => {
+          showNotification("▶️ Musique reprise");
+        })
+        .catch((error: unknown) => {
+          setIsPlaying(false);
+
+          console.error(
+            "Impossible de démarrer la musique :",
+            error
+          );
+
+          showNotification(
+            "⚠️ Lecture impossible. Vérifiez le fichier audio."
+          );
+        });
+    } else {
+      userPausedRef.current = true;
+
+      audio.pause();
+
+      showNotification("⏸️ Musique en pause");
+    }
+  };
+
+  // Le bouton reste visible uniquement sur /matiere
+  const path = location.pathname.toLowerCase();
+  const isVisible = path === "/matiere";
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 bg-white/90 dark:bg-gray-800 rounded-xl shadow-lg p-4 flex flex-col items-center gap-2 w-[160px]">
+
+      <button
+        onClick={handleToggleAudio}
+        className="w-full text-sm font-semibold text-gray-800 dark:text-white bg-blue-100 dark:bg-blue-900 px-4 py-2 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800 transition"
+        aria-label={
+          isPlaying
+            ? "Mettre la musique en pause"
+            : "Reprendre la musique"
+        }
+      >
+        {isPlaying ? "⏸️ Pause" : "▶️ Play"}
+      </button>
+
+      <div className="text-[11px] text-gray-500 dark:text-gray-400 italic text-center">
+        {isPlaying
+          ? "Lecture en cours..."
+          : "Cliquez pour reprendre."}
+      </div>
+
+      {notification && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute top-[-45px] right-0 bg-black/80 text-white text-xs px-3 py-2 rounded shadow-lg whitespace-nowrap"
+        >
+          {notification}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AudioManager;

@@ -1,0 +1,258 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+const audioPlaylist = [
+  "/sounds/e1.mp3",
+  "/sounds/e2.mp3",
+  "/sounds/e3.mp3",
+  "/sounds/e4.mp3",
+  "/sounds/e5.mp3",
+  "/sounds/e6.mp3",
+  "/sounds/e7.mp3",
+];
+
+const shouldPauseAudio = [
+  "/accueil",
+  "/inscription",
+  "/remediationvideo",
+];
+
+const AudioManager: React.FC = () => {
+  const location = useLocation();
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const unlockedRef = useRef(false);
+  const manualPauseRef = useRef(false);
+
+  const [ready, setReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const [manualPause, setManualPause] = useState(false);
+  const [notification, setNotification] = useState("");
+
+  const showNotification = (message: string) => {
+    setNotification(message);
+  };
+
+  const getRandomTrack = (currentTrack?: string) => {
+    const available = audioPlaylist.filter(
+      (track) => track !== currentTrack
+    );
+
+    const tracks = available.length > 0 ? available : audioPlaylist;
+
+    return tracks[Math.floor(Math.random() * tracks.length)];
+  };
+
+  // Une seule instance audio pendant toute la vie de l'application.
+  useEffect(() => {
+    const audio = new Audio();
+
+    audio.preload = "auto";
+    audio.volume = 0.7;
+
+    const firstTrack = getRandomTrack();
+
+    audio.src = firstTrack;
+    audio.dataset.currentTrack = firstTrack;
+
+    const handleCanPlay = () => {
+      setReady(true);
+      console.info("Audio prêt :", audio.dataset.currentTrack);
+    };
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+      setNotification("");
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+    };
+
+    const handleEnded = () => {
+      const nextTrack = getRandomTrack(audio.dataset.currentTrack);
+
+      console.info("Changement de morceau :", nextTrack);
+
+      audio.dataset.currentTrack = nextTrack;
+      audio.src = nextTrack;
+      audio.load();
+
+      if (unlockedRef.current && !manualPauseRef.current) {
+        audio.play().catch((error: unknown) => {
+          console.error("Lecture du morceau suivant impossible :", error);
+          setNotification("Impossible de lancer le morceau suivant.");
+        });
+      }
+    };
+
+    const handleError = () => {
+      const code = audio.error?.code ?? 0;
+
+      const messages: Record<number, string> = {
+        1: "Lecture audio interrompue.",
+        2: "Erreur réseau pendant le chargement audio.",
+        3: "Firefox n'arrive pas à décoder ce fichier audio.",
+        4: "Format audio ou fichier non pris en charge.",
+      };
+
+      const message = messages[code] || "Erreur audio inconnue.";
+
+      console.error("Erreur audio :", {
+        fichier: audio.dataset.currentTrack,
+        code,
+        message,
+        source: audio.currentSrc,
+      });
+
+      setIsPlaying(false);
+      setNotification(message);
+    };
+
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    audioRef.current = audio;
+
+    audio.load();
+
+    return () => {
+      audio.pause();
+
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+
+      audio.removeAttribute("src");
+      audio.load();
+
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Gestion des pages où la musique doit être interrompue.
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) return;
+
+    const path = location.pathname.toLowerCase();
+
+    const excluded = shouldPauseAudio.some((page) =>
+      path.includes(page)
+    );
+
+    if (excluded) {
+      audio.pause();
+      return;
+    }
+
+    if (
+      unlockedRef.current &&
+      !manualPauseRef.current &&
+      audio.paused
+    ) {
+      audio.play().catch((error: unknown) => {
+        console.error("Reprise audio impossible :", error);
+        setNotification("Impossible de reprendre la musique.");
+      });
+    }
+  }, [location.pathname, unlocked, manualPause]);
+
+  // Le play() est appelé directement dans le clic utilisateur.
+  const handleToggleAudio = () => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      showNotification("Le lecteur audio n'est pas initialisé.");
+      return;
+    }
+
+    if (!audio.paused) {
+      manualPauseRef.current = true;
+      setManualPause(true);
+      audio.pause();
+      showNotification("Musique en pause.");
+      return;
+    }
+
+    manualPauseRef.current = false;
+    unlockedRef.current = true;
+
+    setManualPause(false);
+    setUnlocked(true);
+
+    setNotification("Démarrage de la musique...");
+
+    audio.play()
+      .then(() => {
+        console.info("Lecture audio démarrée :", audio.currentSrc);
+        setNotification("");
+      })
+      .catch((error: unknown) => {
+        console.error("Échec du démarrage audio :", error);
+
+        const name =
+          error instanceof Error ? error.name : "Erreur inconnue";
+
+        if (name === "NotAllowedError") {
+          setNotification("Firefox a bloqué la lecture. Clique à nouveau.");
+        } else if (name === "NotSupportedError") {
+          setNotification("Format audio non pris en charge.");
+        } else {
+          setNotification("Lecture impossible : " + name);
+        }
+
+        setIsPlaying(false);
+      });
+  };
+
+  const path = location.pathname.toLowerCase();
+
+  const isExcluded = shouldPauseAudio.some((page) =>
+    path.includes(page)
+  );
+
+  if (isExcluded) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[9999] bg-white/95 dark:bg-gray-800 rounded-xl shadow-lg p-3 flex flex-col items-center gap-2 w-[190px]">
+
+      <button
+        type="button"
+        onClick={handleToggleAudio}
+        className="w-full text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition"
+      >
+        {isPlaying
+          ? "⏸️ Mettre en pause"
+          : unlocked
+          ? "▶️ Reprendre"
+          : "🎵 Activer la musique"}
+      </button>
+
+      <div className="text-[11px] text-gray-600 dark:text-gray-300 text-center">
+        {isPlaying
+          ? "Lecture en cours..."
+          : ready
+          ? "Cliquez pour démarrer la musique."
+          : "Préparation du lecteur audio..."}
+      </div>
+
+      {notification && (
+        <div className="text-xs text-center text-orange-600 dark:text-orange-300 break-words">
+          {notification}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AudioManager;

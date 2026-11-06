@@ -1,0 +1,224 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+const audioPlaylist = [
+  "/sounds/e1.mp3",
+  "/sounds/e2.mp3",
+  "/sounds/e3.mp3",
+  "/sounds/e4.mp3",
+  "/sounds/e5.mp3",
+  "/sounds/e6.mp3",
+  "/sounds/e7.mp3",
+];
+
+const shouldPauseAudio = [
+  "/accueil",
+  "/inscription",
+  "/remediationvideo",
+];
+
+const AudioManager: React.FC = () => {
+  const location = useLocation();
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const failedTracks = useRef<Set<string>>(new Set());
+
+  const [ready, setReady] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const [manualPause, setManualPause] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [notification, setNotification] = useState("");
+
+  const showNotification = (message: string) => {
+    setNotification(message);
+    window.setTimeout(() => setNotification(""), 3000);
+  };
+
+  // Choisit un morceau différent de ceux qui ont échoué.
+  const advanceTrack = (audio: HTMLAudioElement) => {
+    let available = audioPlaylist.filter(
+      (track) =>
+        !failedTracks.current.has(track) &&
+        track !== audio.dataset.currentTrack
+    );
+
+    if (available.length === 0) {
+      failedTracks.current.clear();
+      available = audioPlaylist.filter(
+        (track) => track !== audio.dataset.currentTrack
+      );
+    }
+
+    if (available.length === 0) {
+      showNotification("Aucun morceau disponible.");
+      setIsPlaying(false);
+      return;
+    }
+
+    const next =
+      available[Math.floor(Math.random() * available.length)];
+
+    audio.dataset.currentTrack = next;
+    audio.src = next;
+    audio.load();
+
+    audio.play()
+      .then(() => {
+        setIsPlaying(true);
+        setNotification("");
+      })
+      .catch((error: unknown) => {
+        console.error("Erreur de lecture audio :", error);
+        setIsPlaying(false);
+        showNotification("Impossible de lire le morceau suivant.");
+      });
+  };
+
+  // Création d'un seul lecteur audio.
+  useEffect(() => {
+    const audio = new Audio();
+
+    audio.preload = "auto";
+    audio.volume = 0.7;
+    audio.loop = false;
+
+    const firstTrack =
+      audioPlaylist[Math.floor(Math.random() * audioPlaylist.length)];
+
+    audio.dataset.currentTrack = firstTrack;
+    audio.src = firstTrack;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
+    const handleEnded = () => {
+      advanceTrack(audio);
+    };
+
+    const handleError = () => {
+      const failed = audio.dataset.currentTrack;
+
+      if (failed) {
+        failedTracks.current.add(failed);
+        console.error("Morceau audio inaccessible :", failed);
+      }
+
+      advanceTrack(audio);
+    };
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    audioRef.current = audio;
+    setReady(true);
+
+    return () => {
+      audio.pause();
+
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+
+      audio.removeAttribute("src");
+      audio.load();
+
+      audioRef.current = null;
+    };
+  }, []);
+
+  // Gestion des pages autorisées et interdites.
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio || !ready) return;
+
+    const path = location.pathname.toLowerCase();
+
+    const shouldPause = shouldPauseAudio.some((page) =>
+      path.includes(page.toLowerCase())
+    );
+
+    if (shouldPause) {
+      audio.pause();
+      return;
+    }
+
+    if (unlocked && !manualPause && audio.paused) {
+      audio.play().catch((error: unknown) => {
+        console.error("Reprise audio impossible :", error);
+        setIsPlaying(false);
+      });
+    }
+  }, [location.pathname, ready, unlocked, manualPause]);
+
+  // Le premier clic autorise le démarrage de la musique.
+  const handleToggleAudio = async () => {
+    const audio = audioRef.current;
+
+    if (!audio) {
+      showNotification("Lecteur audio en cours d'initialisation.");
+      return;
+    }
+
+    if (!audio.paused) {
+      audio.pause();
+      setManualPause(true);
+      showNotification("Musique en pause.");
+      return;
+    }
+
+    setManualPause(false);
+    setUnlocked(true);
+
+    try {
+      await audio.play();
+      showNotification("Musique activée !");
+    } catch (error) {
+      console.error("Échec du démarrage audio :", error);
+      showNotification("Lecture bloquée ou fichier inaccessible.");
+    }
+  };
+
+  const path = location.pathname.toLowerCase();
+
+  const isExcluded = shouldPauseAudio.some((page) =>
+    path.includes(page.toLowerCase())
+  );
+
+  if (isExcluded) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[9999] bg-white/95 dark:bg-gray-800 rounded-xl shadow-lg p-3 flex flex-col items-center gap-2 w-[180px]">
+      <button
+        onClick={handleToggleAudio}
+        disabled={!ready}
+        className="w-full text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-3 rounded-lg transition"
+      >
+        {!ready
+          ? "Chargement..."
+          : isPlaying
+          ? "⏸️ Mettre en pause"
+          : unlocked
+          ? "▶️ Reprendre"
+          : "🎵 Activer la musique"}
+      </button>
+
+      <div className="text-[11px] text-gray-600 dark:text-gray-300 text-center">
+        {isPlaying
+          ? "Lecture en cours..."
+          : "Cliquez pour démarrer la musique."}
+      </div>
+
+      {notification && (
+        <div className="text-xs text-center text-orange-600 dark:text-orange-300">
+          {notification}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AudioManager;

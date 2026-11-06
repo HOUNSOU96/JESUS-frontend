@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ✨ Brillance dorée */
+@keyframes shine {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: brightness(1.8) drop-shadow(0 0 15px gold);
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+}
+
+.animate-shine {
+  animation: shine 2s ease-in-out infinite;
+  will-change: filter;
+}
+
+/* 🌌 Défilement lent du fond */
+@keyframes dreamy-scroll {
+  0% {
+    background-position: center center;
+  }
+  100% {
+    background-position: center top;
+  }
+}
+
+/* 👻 Apparition douce */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 🌠 Application sur le body */
+body {
+  background-color: black; /* important pour ta demande */
+  background-image: url('/images/background.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+  min-height: 100vh;
+
+  animation:
+    fade-in 1.5s ease-out,
+    dreamy-scroll 60s linear infinite;
+}
+
+/* Animation gradient-x (si utile) */
+@keyframes gradient-x {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+
+/* Conteneur perspective */
+.perspective {
+  perspective: 1000px;
+}
+
+/* Carte 3D qui tourne */
+.card-3d {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: rotate-globe 10s linear infinite;
+  cursor: pointer;
+}
+
+/* Animation rotation continue */
+@keyframes rotate-globe {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+/* Face de la carte */
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Face arrière (icône) */
+.card-back {
+  transform: rotateY(180deg);
+}
+
+/* Pause l’animation quand on ajoute la classe .paused */
+.paused {
+  animation-play-state: paused;
+}
+

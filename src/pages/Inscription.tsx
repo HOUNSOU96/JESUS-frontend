@@ -1,0 +1,336 @@
+// 📁 Inscription.tsx
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import api from '@/utils/axios'; // ton axios configuré
+
+const data: Record<
+  string,
+  Record<string, Record<string, string[]>>
+> = {
+  Afrique: {
+    Benin: {
+      "Cotonou": ["Paroisse Sainte Rita", "Paroisse Saint Michel"],
+      "Parakou": ["Paroisse Saint Pierre", "Paroisse Sainte Thérèse"],
+      "Porto-Novo": ["Paroisse Saint Pierre Saint Paul", "Paroisse Saint Paul de Dowa"]
+    },
+    Togo: {
+      "Lomé": ["Paroisse Sacré Cœur", "Paroisse Saint Jean"],
+      "Kara": ["Paroisse Saint Joseph"]
+    }
+  },
+  Europe: {
+    France: {
+      "Paris": ["Paroisse Notre Dame", "Paroisse Saint Sulpice"],
+      "Lyon": ["Paroisse Saint Irénée"]
+    },
+    Italie: {
+      "Rome": ["Paroisse Saint Pierre", "Paroisse Saint Paul"]
+    }
+  }
+};
+
+const countryCodes: Record<string, string> = {
+  Benin: "+229",
+  Togo: "+228",
+  France: "+33",
+  Italie: "+39",
+};
+
+const Inscription: React.FC = () => {
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    nom: '',
+    prenom: '',
+    sexe: '',
+    dateIntegration: '',
+    statut: '',
+    profession: '',
+    continent: '',
+    country: '',
+    diocese: '',
+    parish: '',
+    numero: '',
+    email: '',
+  });
+
+  const [erreurs, setErreurs] = useState<any>({});
+  const [loadingForm, setLoadingForm] = useState(false);
+  const [matricule, setMatricule] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const validerFormulaire = () => {
+    const newErrors: any = {};
+    if (!formData.nom) newErrors.nom = "Le nom est obligatoire.";
+    if (!formData.prenom) newErrors.prenom = "Le prénom est obligatoire.";
+    if (!formData.sexe) newErrors.sexe = "Le sexe est obligatoire.";
+    if (!formData.dateIntegration) newErrors.dateIntegration = "La date d’intégration est obligatoire.";
+    if (!formData.statut) newErrors.statut = "Le statut est obligatoire.";
+    if (!formData.profession) newErrors.profession = "La profession est obligatoire.";
+    if (!formData.continent) newErrors.continent = "Le continent est obligatoire.";
+    if (!formData.country) newErrors.country = "Le pays est obligatoire.";
+    if (!formData.diocese) newErrors.diocese = "Le diocèse est obligatoire.";
+    if (!formData.parish) newErrors.parish = "La paroisse est obligatoire.";
+    if (!formData.numero) newErrors.numero = "Le numéro WhatsApp est obligatoire.";
+    setErreurs(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const countries = formData.continent ? Object.keys(data[formData.continent] || {}) : [];
+  const dioceses = formData.country ? Object.keys(data[formData.continent]?.[formData.country] || {}) : [];
+  const parishes = formData.diocese ? data[formData.continent]?.[formData.country]?.[formData.diocese] || [] : [];
+
+  const champTexte = (label: string, name: keyof typeof formData, type = "text") => (
+    <div>
+      <label className="text-sm font-medium text-gray-700 dark:text-white">
+        {label} <span className="text-red-600">*</span>
+      </label>
+      <input
+        type={type}
+        name={name}
+        value={formData[name]}
+        onChange={handleChange}
+        className={`w-full mt-1 p-2 rounded-xl border ${
+          erreurs[name] ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'
+        } transition focus:outline-none`}
+      />
+      {erreurs[name] && <p className="text-red-600 text-sm mt-1">{erreurs[name]}</p>}
+    </div>
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validerFormulaire()) return;
+
+    setLoadingForm(true);
+
+    try {
+      const response = await api.post("/register", formData);
+      setMatricule(response.data.matricule); // Le matricule renvoyé par le backend
+    } catch (err: any) {
+      console.error(err);
+      alert("Erreur lors de l'inscription : " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoadingForm(false);
+    }
+  };
+
+  return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 max-w-2xl w-full space-y-6"
+      >
+        <h2 className="text-xl font-bold text-center text-gray-800 dark:text-white">Inscription</h2>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {champTexte("Nom", "nom")}
+          {champTexte("Prénom", "prenom")}
+
+          {/* Sexe */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Sexe <span className="text-red-600">*</span></label>
+            <select
+              name="sexe"
+              value={formData.sexe}
+              onChange={handleChange}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.sexe ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              <option value="Homme">Homme</option>
+              <option value="Femme">Femme</option>
+            </select>
+            {erreurs.sexe && <p className="text-red-600 text-sm mt-1">{erreurs.sexe}</p>}
+          </div>
+
+          {champTexte("Date d’intégration", "dateIntegration", "date")}
+
+          {/* Statut */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Statut <span className="text-red-600">*</span></label>
+            <select
+              name="statut"
+              value={formData.statut}
+              onChange={handleChange}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.statut ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              <option value="Membre">Membre</option>
+              <option value="Responsable paroissiale">Responsable paroissial</option>
+              <option value="Responsable diocésain">Responsable diocésain</option>
+              <option value="Responsable national">Responsable national</option>
+            </select>
+            {erreurs.statut && <p className="text-red-600 text-sm mt-1">{erreurs.statut}</p>}
+          </div>
+
+          {/* Profession */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Profession <span className="text-red-600">*</span></label>
+            <select
+              name="profession"
+              value={formData.profession}
+              onChange={handleChange}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.profession ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              <option value="Étudiant">Étudiant</option>
+              <option value="Enseignant">Enseignant</option>
+              <option value="Médecin">Médecin</option>
+              <option value="Ingénieur">Ingénieur</option>
+              <option value="Commerçant">Commerçant</option>
+              <option value="Autre">Autre</option>
+            </select>
+            {erreurs.profession && <p className="text-red-600 text-sm mt-1">{erreurs.profession}</p>}
+          </div>
+
+          {/* Continent */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Continent <span className="text-red-600">*</span></label>
+            <select
+              name="continent"
+              value={formData.continent}
+              onChange={handleChange}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.continent ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              {Object.keys(data).map(continent => (
+                <option key={continent} value={continent}>{continent}</option>
+              ))}
+            </select>
+            {erreurs.continent && <p className="text-red-600 text-sm mt-1">{erreurs.continent}</p>}
+          </div>
+
+          {/* Pays */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Pays <span className="text-red-600">*</span></label>
+            <select
+              name="country"
+              value={formData.country}
+              onChange={handleChange}
+              disabled={!formData.continent}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.country ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              {countries.map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </select>
+            {erreurs.country && <p className="text-red-600 text-sm mt-1">{erreurs.country}</p>}
+          </div>
+
+          {/* Diocèse */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Diocèse <span className="text-red-600">*</span></label>
+            <select
+              name="diocese"
+              value={formData.diocese}
+              onChange={handleChange}
+              disabled={!formData.country}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.diocese ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              {dioceses.map(diocese => (
+                <option key={diocese} value={diocese}>{diocese}</option>
+              ))}
+            </select>
+            {erreurs.diocese && <p className="text-red-600 text-sm mt-1">{erreurs.diocese}</p>}
+          </div>
+
+          {/* Paroisse */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Paroisse <span className="text-red-600">*</span></label>
+            <select
+              name="parish"
+              value={formData.parish}
+              onChange={handleChange}
+              disabled={!formData.diocese}
+              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.parish ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
+            >
+              <option value="">Sélectionner</option>
+              {parishes.map((parish: string) => (
+                <option key={parish} value={parish}>{parish}</option>
+              ))}
+            </select>
+            {erreurs.parish && <p className="text-red-600 text-sm mt-1">{erreurs.parish}</p>}
+          </div>
+
+          {/* Contact avec code pays */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">
+              Numéro WhatsApp <span className="text-red-600">*</span>
+            </label>
+            <div className="flex mt-1">
+              <input
+                type="text"
+                value={formData.country ? countryCodes[formData.country] : ""}
+                readOnly
+                className="w-20 p-2 rounded-l-xl border border-gray-300 bg-gray-100 text-gray-600"
+              />
+              <input
+                type="text"
+                name="numero"
+                value={formData.numero}
+                onChange={handleChange}
+                placeholder="Ex: 12345678"
+                className={`flex-1 p-2 rounded-r-xl border border-gray-300 focus:ring-blue-500 transition focus:outline-none ${
+                  erreurs.numero ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+            </div>
+            {erreurs.numero && <p className="text-red-600 text-sm mt-1">{erreurs.numero}</p>}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 dark:text-white">Email (optionnel)</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full mt-1 p-2 rounded-xl border border-gray-300 focus:ring-blue-500 transition focus:outline-none"
+            />
+          </div>
+
+          {/* Bouton ou matricule */}
+          <div className="sm:col-span-2">
+            {matricule ? (
+              <>
+                <p className="text-center text-green-600 dark:text-green-400 font-semibold text-lg">
+                  Votre numéro matricule : <span className="font-bold">{matricule}</span>
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold shadow-md transition duration-300 mt-4"
+                >
+                  Aller à la connexion
+                </motion.button>
+              </>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                type="submit"
+                disabled={loadingForm}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold shadow-md transition duration-300 disabled:opacity-50"
+              >
+                {loadingForm ? 'Enregistrement...' : "Valider l'inscription"}
+              </motion.button>
+            )}
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Inscription;

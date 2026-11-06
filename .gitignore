@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Local caches
+.vite/
+__pycache__/
+*.py[cod]
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Dépendances et compilations
+node_modules/
+dist/
+build/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Caches
+.vite/
+.cache/
+coverage/
+
+# Système
+.DS_Store
+Thumbs.db

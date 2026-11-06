@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diagnostic audio JESUS</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 650px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    section {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 12px;
+    }
+    button {
+      padding: 12px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    #status {
+      white-space: pre-wrap;
+      background: #111;
+      color: #00ff90;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Diagnostic audio JESUS</h1>
+
+  <section>
+    <h2>TEST 1 — Lecteur HTML natif</h2>
+    <audio id="nativeAudio" controls preload="auto"
+           src="/sounds/e3.mp3"></audio>
+    <p>Lance la lecture avec les commandes du lecteur ci-dessus.</p>
+  </section>
+
+  <section>
+    <h2>TEST 2 — Lecteur JavaScript new Audio()</h2>
+    <button id="play">▶ Lire avec JavaScript</button>
+    <button id="pause">⏸ Arrêter</button>
+    <p>Ce test utilise la même méthode que AudioManager.</p>
+  </section>
+
+  <section>
+    <h2>État du lecteur JavaScript</h2>
+    <div id="status">En attente du test...</div>
+  </section>
+
+  <script>
+    const audio = new Audio("/sounds/e3.mp3");
+    audio.preload = "auto";
+    audio.volume = 1;
+    audio.muted = false;
+
+    const status = document.getElementById("status");
+
+    function updateStatus(event = "Actualisation") {
+      status.textContent =
+        "Événement : " + event +
+        "\nSource : " + audio.currentSrc +
+        "\nVolume : " + audio.volume +
+        "\nMuet : " + audio.muted +
+        "\nEn pause : " + audio.paused +
+        "\nTemps : " + audio.currentTime.toFixed(2) + " s" +
+        "\nDurée : " + (Number.isFinite(audio.duration)
+          ? audio.duration.toFixed(2) + " s" : "Inconnue") +
+        "\nReadyState : " + audio.readyState +
+        "\nNetworkState : " + audio.networkState +
+        "\nErreur : " + (audio.error
+          ? audio.error.code + " — " + audio.error.message
+          : "Aucune");
+    }
+
+    ["loadstart", "loadeddata", "canplay", "play",
+     "playing", "pause", "ended", "error", "waiting"].forEach(event => {
+      audio.addEventListener(event, () => updateStatus(event));
+    });
+
+    document.getElementById("play").addEventListener("click", async () => {
+      try {
+        audio.muted = false;
+        audio.volume = 1;
+        await audio.play();
+        updateStatus("Lecture démarrée");
+      } catch (error) {
+        updateStatus("ÉCHEC : " + error.name + " — " + error.message);
+      }
+    });
+
+    document.getElementById("pause").addEventListener("click", () => {
+      audio.pause();
+      updateStatus("Arrêt demandé");
+    });
+
+    setInterval(() => updateStatus("Surveillance"), 1000);
+    audio.load();
+  </script>
+</body>
+</html>

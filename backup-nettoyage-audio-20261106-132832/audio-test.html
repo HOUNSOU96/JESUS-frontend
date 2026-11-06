@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test audio JESUS</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: white;
+  padding: 25px;
+}
+button {
+  padding: 12px;
+  margin: 5px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+}
+#play { background: #16a34a; color: white; }
+#stop { background: #dc2626; color: white; }
+#result {
+  white-space: pre-wrap;
+  background: #263449;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+</style>
+</head>
+<body>
+
+<h2>Diagnostic audio JESUS</h2>
+
+<p>Sélectionne un morceau, puis clique sur Lire.</p>
+
+<div id="tracks"></div>
+
+<button id="play">▶ Lire</button>
+<button id="stop">⏹ Arrêter</button>
+
+<p id="status">En attente...</p>
+<audio id="audio" controls preload="metadata"></audio>
+
+<div id="result">Les résultats apparaîtront ici.</div>
+
+<script>
+const audio = document.getElementById("audio");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+
+let selected = 1;
+
+function log(message) {
+  result.textContent += "\n" + message;
+}
+
+for (let i = 1; i <= 7; i++) {
+  const button = document.createElement("button");
+  button.textContent = "Morceau e" + i;
+
+  button.onclick = () => {
+    selected = i;
+    audio.pause();
+    audio.src = "/sounds/e" + i + ".mp3";
+    audio.load();
+
+    status.textContent = "Morceau e" + i + " sélectionné.";
+    log("Sélection : e" + i + ".mp3");
+  };
+
+  document.getElementById("tracks").appendChild(button);
+}
+
+audio.addEventListener("canplay", () => {
+  log("CANPLAY : navigateur prêt à lire.");
+});
+
+audio.addEventListener("playing", () => {
+  status.textContent = "Lecture effective : e" + selected + ".mp3";
+  log("PLAYING : lecture démarrée.");
+});
+
+audio.addEventListener("error", () => {
+  const e = audio.error;
+  log("ERREUR MEDIA : code=" + (e ? e.code : "inconnu"));
+  log("Message : " + (e ? e.message : "aucun"));
+});
+
+document.getElementById("play").onclick = async () => {
+  try {
+    log("Tentative de lecture e" + selected + "...");
+
+    await audio.play();
+
+    status.textContent = "Lecture démarrée.";
+  } catch (e) {
+    status.textContent = "Lecture impossible.";
+
+    log("ERREUR PLAY : " + e.name);
+    log("DETAIL : " + e.message);
+  }
+};
+
+document.getElementById("stop").onclick = () => {
+  audio.pause();
+  status.textContent = "Lecture arrêtée.";
+};
+
+audio.src = "/sounds/e1.mp3";
+</script>
+
+</body>
+</html>

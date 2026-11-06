@@ -1,0 +1,70 @@
+[
+  {
+    "date": "2025-07-13T23:48:14.344318",
+    "note": 0,
+    "mention": "Insuffisant",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 0,
+    "notionsNonAcquises": [
+      "Arithmétique",
+      "Géométrie"
+    ]
+  },
+  {
+    "date": "2025-07-13T23:49:48.141712",
+    "note": 20,
+    "mention": "Très Bien",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 2,
+    "notionsNonAcquises": []
+  },
+  {
+    "date": "2025-07-13T23:50:52.848088",
+    "note": 10,
+    "mention": "Passable",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 1,
+    "notionsNonAcquises": [
+      "Géométrie"
+    ]
+  },
+  {
+    "date": "2025-07-14T00:23:24.691561",
+    "note": 10,
+    "mention": "Passable",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 1,
+    "notionsNonAcquises": [
+      "Arithmétique"
+    ]
+  },
+  {
+    "date": "2025-07-14T01:19:47.506140",
+    "note": 20,
+    "mention": "Très Bien",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 2,
+    "notionsNonAcquises": []
+  },
+  {
+    "date": "2025-07-14T15:53:55.602228",
+    "note": 10,
+    "mention": "Passable",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 1,
+    "notionsNonAcquises": [
+      "Géométrie"
+    ]
+  },
+  {
+    "date": "2025-07-14T18:55:53.160379",
+    "note": 0,
+    "mention": "Insuffisant",
+    "nbQuestions": 2,
+    "nbBonnesReponses": 0,
+    "notionsNonAcquises": [
+      "Arithmétique",
+      "Géométrie"
+    ]
+  }
+]
