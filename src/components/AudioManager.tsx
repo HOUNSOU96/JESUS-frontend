@@ -23,6 +23,12 @@ const AudioManager: React.FC = () => {
   const unlockedRef = useRef(false);
   const manualPauseRef = useRef(false);
 
+  // Mémorise l'état de lecture avant de quitter la fenêtre.
+  const wasPlayingBeforeLeavingRef = useRef(false);
+
+  // Indique si l'utilisateur a quitté l'application.
+  const awayRef = useRef(false);
+
   const [ready, setReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [notification, setNotification] = useState("");
@@ -73,7 +79,12 @@ const AudioManager: React.FC = () => {
       audio.src = nextTrack;
       audio.load();
 
-      if (unlockedRef.current && !manualPauseRef.current) {
+      if (
+        unlockedRef.current &&
+        !manualPauseRef.current &&
+        !awayRef.current &&
+        !document.hidden
+      ) {
         audio.play().catch((error: unknown) => {
           console.error("Lecture du morceau suivant impossible :", error);
         });
@@ -130,6 +141,101 @@ const AudioManager: React.FC = () => {
     };
   }, []);
 
+  // Détection du départ et du retour dans l'application.
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) return;
+
+    const path = location.pathname.toLowerCase();
+
+    const isExcluded = shouldPauseAudio.some((page) =>
+      path.includes(page)
+    );
+
+    // L'utilisateur quitte la fenêtre ou l'onglet.
+    const handleDeparture = () => {
+      if (awayRef.current) return;
+
+      awayRef.current = true;
+
+      // On mémorise uniquement une lecture réellement active.
+      wasPlayingBeforeLeavingRef.current =
+        !audio.paused && !manualPauseRef.current;
+
+      if (wasPlayingBeforeLeavingRef.current) {
+        console.info("Utilisateur absent : arrêt de la musique.");
+      }
+
+      audio.pause();
+    };
+
+    // L'utilisateur revient dans l'application.
+    const handleReturn = () => {
+      if (document.hidden || !document.hasFocus()) return;
+
+      if (!awayRef.current) return;
+
+      awayRef.current = false;
+
+      const shouldResume =
+        wasPlayingBeforeLeavingRef.current &&
+        !manualPauseRef.current &&
+        !isExcluded;
+
+      wasPlayingBeforeLeavingRef.current = false;
+
+      if (!shouldResume) return;
+
+      console.info("Utilisateur de retour : reprise de la musique.");
+
+      audio.play()
+        .then(() => {
+          setNotification("");
+        })
+        .catch((error: unknown) => {
+          console.error("Reprise audio impossible :", error);
+        });
+    };
+
+    // Changement d'onglet ou minimisation.
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        handleDeparture();
+      } else {
+        handleReturn();
+      }
+    };
+
+    // Changement de fenêtre avec Alt + Tab.
+    const handleBlur = () => {
+      handleDeparture();
+    };
+
+    // Retour dans la fenêtre JESUS.
+    const handleFocus = () => {
+      handleReturn();
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [location.pathname]);
+
   // Gestion du démarrage automatique et des changements de pages.
   useEffect(() => {
     const audio = audioRef.current;
@@ -151,9 +257,17 @@ const AudioManager: React.FC = () => {
       return;
     }
 
-    // Démarrage de la musique, avec gestion du blocage de Firefox.
+    // Démarrage de la musique.
     const attemptPlayback = () => {
-      if (manualPauseRef.current || !audio.paused) return;
+      if (
+        manualPauseRef.current ||
+        awayRef.current ||
+        document.hidden ||
+        !document.hasFocus() ||
+        !audio.paused
+      ) {
+        return;
+      }
 
       audio.play()
         .then(() => {
@@ -172,7 +286,6 @@ const AudioManager: React.FC = () => {
     };
 
     if (isAutoStartPage) {
-      // Première tentative de lecture automatique.
       attemptPlayback();
 
       // Firefox peut autoriser la lecture après la première interaction.
@@ -223,6 +336,18 @@ const AudioManager: React.FC = () => {
     if (
       unlockedRef.current &&
       !manualPauseRef.current &&
+      !awayRef.current &&
+      !document.hidden &&
+      !audio.paused
+    ) {
+      return;
+    }
+
+    if (
+      unlockedRef.current &&
+      !manualPauseRef.current &&
+      !awayRef.current &&
+      !document.hidden &&
       audio.paused
     ) {
       attemptPlayback();
@@ -240,13 +365,17 @@ const AudioManager: React.FC = () => {
 
     if (!audio.paused) {
       manualPauseRef.current = true;
+      wasPlayingBeforeLeavingRef.current = false;
+
       audio.pause();
       setNotification("Musique en pause.");
+
       return;
     }
 
     manualPauseRef.current = false;
     unlockedRef.current = true;
+    wasPlayingBeforeLeavingRef.current = false;
 
     setNotification("Démarrage de la musique...");
 

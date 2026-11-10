@@ -65,7 +65,7 @@ const Login: React.FC = () => {
           aria-label="Formulaire de connexion"
         >
           <h2 className="text-3xl font-extrabold text-center text-blue-700 dark:text-white tracking-tight">
-            Connexion 
+            Connexion
           </h2>
 
           {/* Nom de famille */}
