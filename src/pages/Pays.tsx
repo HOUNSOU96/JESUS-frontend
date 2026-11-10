@@ -10,6 +10,7 @@ interface NationalResponsible {
   nom: string;
   prenom: string;
   level: string;
+  role_name: string;
   is_primary: boolean;
 }
 
@@ -158,7 +159,7 @@ const Pays: React.FC = () => {
                       {responsable.prenom} {responsable.nom}
                     </p>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Responsable national
+                      {responsable.role_name}
                     </p>
                   </div>
                 </div>

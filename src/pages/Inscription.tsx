@@ -45,7 +45,7 @@ const Inscription: React.FC = () => {
     prenom: '',
     sexe: '',
     dateIntegration: '',
-    statut: '',
+    statut: "Membre",
     profession: '',
     continent: '',
     country: '',
@@ -69,7 +69,6 @@ const Inscription: React.FC = () => {
     if (!formData.prenom) newErrors.prenom = "Le prénom est obligatoire.";
     if (!formData.sexe) newErrors.sexe = "Le sexe est obligatoire.";
     if (!formData.dateIntegration) newErrors.dateIntegration = "La date d’intégration est obligatoire.";
-    if (!formData.statut) newErrors.statut = "Le statut est obligatoire.";
     if (!formData.profession) newErrors.profession = "La profession est obligatoire.";
     if (!formData.continent) newErrors.continent = "Le continent est obligatoire.";
     if (!formData.country) newErrors.country = "Le pays est obligatoire.";
@@ -151,22 +150,17 @@ const Inscription: React.FC = () => {
 
           {champTexte("Date d’intégration", "dateIntegration", "date")}
 
-          {/* Statut */}
+          {/* Statut : toute inscription commence comme membre */}
           <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Statut <span className="text-red-600">*</span></label>
-            <select
-              name="statut"
-              value={formData.statut}
-              onChange={handleChange}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.statut ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              <option value="Membre">Membre</option>
-              <option value="Responsable paroissiale">Responsable paroissial</option>
-              <option value="Responsable diocésain">Responsable diocésain</option>
-              <option value="Responsable national">Responsable national</option>
-            </select>
-            {erreurs.statut && <p className="text-red-600 text-sm mt-1">{erreurs.statut}</p>}
+            <label className="text-sm font-medium text-gray-700 dark:text-white">
+              Statut
+            </label>
+            <input
+              type="text"
+              value="Membre"
+              readOnly
+              className="w-full mt-1 p-2 rounded-xl border border-gray-300 bg-gray-100 text-gray-700"
+            />
           </div>
 
           {/* Profession */}

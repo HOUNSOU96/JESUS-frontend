@@ -9,8 +9,8 @@ interface DiocesanResponsible {
   user_id: number;
   nom: string;
   prenom: string;
-  statut: string | null;
   level: string;
+  role_name: string;
   parish: string | null;
   is_primary: boolean;
 }
@@ -271,9 +271,7 @@ const Paroisse: React.FC = () => {
                               </p>
 
                               <p className="text-sm text-blue-700 dark:text-blue-300">
-                                {responsable.level === "diocesan"
-                                  ? "Responsable diocésain"
-                                  : "Responsable paroissial"}
+{responsable.role_name}
                               </p>
                             </div>
                           </div>
