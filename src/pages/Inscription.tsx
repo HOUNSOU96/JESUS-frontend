@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { continents } from "@/data";
+import { worldCountries } from "@/data";
 import api from "@/utils/axios";
 
 type FormDataType = {
@@ -34,22 +34,7 @@ const initialForm: FormDataType = {
   email: "",
 };
 
-const countryCodes: Record<string, string> = {
-  benin: "+229",
-  nigeria: "+234",
-  kenya: "+254",
-  france: "+33",
-  allemagne: "+49",
-  espagne: "+34",
-  chine: "+86",
-  japon: "+81",
-  inde: "+91",
-  usa: "+1",
-  canada: "+1",
-  bresil: "+55",
-  australie: "+61",
-  nouvellezelande: "+64",
-};
+
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-900/30";
@@ -106,29 +91,11 @@ export default function Inscription() {
     };
   }, [photoPreview]);
 
-  const selectedContinent = useMemo(
-    () => continents.find((item) => item.name === formData.continent),
-    [formData.continent]
+  const selectedCountry = worldCountries.find(
+    (country) => country.value === formData.country
   );
+  const indicatif = selectedCountry?.callingCode || "+";
 
-  const selectedCountry = useMemo(
-    () =>
-      selectedContinent?.countries.find(
-        (item) => item.name === formData.country
-      ),
-    [selectedContinent, formData.country]
-  );
-
-  const dioceses = selectedCountry?.dioceses ?? [];
-
-  const selectedDiocese = useMemo(
-    () => dioceses.find((item) => item.name === formData.diocese),
-    [dioceses, formData.diocese]
-  );
-
-  const parishes = selectedDiocese?.parishes ?? [];
-
-  const indicatif = countryCodes[formData.country] ?? "+";
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -137,15 +104,27 @@ export default function Inscription() {
   ) => {
     const { name, value } = event.target;
 
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-      ...(name === "continent"
-        ? { country: "", diocese: "", parish: "" }
-        : {}),
-      ...(name === "country" ? { diocese: "", parish: "" } : {}),
-      ...(name === "diocese" ? { parish: "" } : {}),
-    }));
+    setFormData((previous) => {
+      if (name === "country") {
+        const selected = worldCountries.find(
+          (country) => country.value === value
+        );
+
+        return {
+          ...previous,
+          country: value,
+          continent: selected?.continent || "",
+          diocese: "",
+          parish: "",
+        };
+      }
+
+      return {
+        ...previous,
+        [name]: value,
+        ...(name === "diocese" ? { parish: "" } : {}),
+      };
+    });
 
     setErrors((previous) => ({ ...previous, [name]: "" }));
   };
@@ -520,21 +499,11 @@ export default function Inscription() {
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label className={labelClass}>Continent *</label>
-                  <select
-                    name="continent"
-                    value={formData.continent}
-                    onChange={handleChange}
-                    className={inputClass}
+                  <div
+                    className={`${inputClass} min-h-[46px] flex items-center bg-gray-100 dark:bg-gray-800`}
                   >
-                    <option value="">Sélectionner un continent</option>
-                    {continents
-                      .filter((item) => item.countries.length > 0)
-                      .map((item) => (
-                        <option key={item.name} value={item.name}>
-                          {item.label}
-                        </option>
-                      ))}
-                  </select>
+                    {selectedCountry?.continentLabel || "Automatiquement renseigné après le choix du pays"}
+                  </div>
                   <FieldError name="continent" />
                 </div>
 
@@ -544,12 +513,11 @@ export default function Inscription() {
                     name="country"
                     value={formData.country}
                     onChange={handleChange}
-                    disabled={!selectedContinent}
                     className={inputClass}
                   >
-                    <option value="">Sélectionner un pays</option>
-                    {selectedContinent?.countries.map((country) => (
-                      <option key={country.name} value={country.name}>
+                    <option value="">Sélectionnez votre pays</option>
+                    {worldCountries.map((country) => (
+                      <option key={country.code} value={country.value}>
                         {country.label}
                       </option>
                     ))}
@@ -559,39 +527,27 @@ export default function Inscription() {
 
                 <div>
                   <label className={labelClass}>Diocèse *</label>
-                  <select
+                  <input
+                    type="text"
                     name="diocese"
                     value={formData.diocese}
                     onChange={handleChange}
-                    disabled={!selectedCountry}
                     className={inputClass}
-                  >
-                    <option value="">Sélectionner un diocèse</option>
-                    {dioceses.map((diocese) => (
-                      <option key={diocese.name} value={diocese.name}>
-                        {diocese.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Saisissez votre diocèse"
+                  />
                   <FieldError name="diocese" />
                 </div>
 
                 <div>
                   <label className={labelClass}>Paroisse *</label>
-                  <select
+                  <input
+                    type="text"
                     name="parish"
                     value={formData.parish}
                     onChange={handleChange}
-                    disabled={!selectedDiocese}
                     className={inputClass}
-                  >
-                    <option value="">Sélectionner une paroisse</option>
-                    {parishes.map((parish) => (
-                      <option key={parish} value={parish}>
-                        {parish}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Saisissez votre paroisse"
+                  />
                   <FieldError name="parish" />
                 </div>
               </div>

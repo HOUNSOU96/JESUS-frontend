@@ -1,3 +1,4 @@
+import countriesData from "world-countries";
 export const continents = [
   {
     name: "afrique",
@@ -207,3 +208,63 @@ export const continents = [
     countries: [],
   },
 ];
+
+
+
+// Référentiel international des pays et territoires.
+const legacyCountrySlugs: Record<string, string> = {
+  BJ: "benin",
+  NG: "nigeria",
+  KE: "kenya",
+  FR: "france",
+  DE: "allemagne",
+  ES: "espagne",
+  CN: "chine",
+  JP: "japon",
+  IN: "inde",
+  US: "usa",
+  CA: "canada",
+  BR: "bresil",
+  AU: "australie",
+  NZ: "nouvellezelande",
+};
+
+const continentInfo: Record<string, { value: string; label: string }> = {
+  Africa: { value: "afrique", label: "Afrique" },
+  Europe: { value: "europe", label: "Europe" },
+  Asia: { value: "asie", label: "Asie" },
+  Americas: { value: "amerique", label: "Amérique" },
+  Oceania: { value: "oceanie", label: "Océanie" },
+  Antarctic: { value: "antarctique", label: "Antarctique" },
+};
+
+const normalizeCountrySlug = (value: string) =>
+  value
+    .toLocaleLowerCase("fr")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+export const worldCountries = countriesData
+  .map((country) => {
+    const continent = continentInfo[country.region];
+    const frenchName =
+      country.translations?.fra?.common || country.name.common;
+
+    const callingCode =
+      country.idd?.root && country.idd?.suffixes?.length
+        ? country.idd.root + country.idd.suffixes[0]
+        : "";
+
+    return {
+      code: country.cca2,
+      value: legacyCountrySlugs[country.cca2] || normalizeCountrySlug(frenchName),
+      label: frenchName,
+      continent: continent?.value || "",
+      continentLabel: continent?.label || country.region || "Non renseigné",
+      callingCode,
+    };
+  })
+  .filter((country) => country.value && country.continent)
+  .sort((a, b) => a.label.localeCompare(b.label, "fr"));
