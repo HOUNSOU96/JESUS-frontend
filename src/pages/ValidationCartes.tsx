@@ -33,6 +33,7 @@ const ValidationCartes: React.FC = () => {
   const [rejection, setRejection] = useState<Card | null>(null);
   const [reason, setReason] = useState("");
   const [photos, setPhotos] = useState<Record<number, string>>({});
+  const [photoErrors, setPhotoErrors] = useState<Record<number, string>>({});
 
   const load = async () => {
     setLoading(true);
@@ -55,6 +56,9 @@ const ValidationCartes: React.FC = () => {
     let active = true;
     const urls: string[] = [];
 
+    setPhotos({});
+    setPhotoErrors({});
+
     const loadPhotos = async () => {
       for (const card of cards) {
         try {
@@ -66,8 +70,17 @@ const ValidationCartes: React.FC = () => {
           const url = URL.createObjectURL(response.data);
           urls.push(url);
           setPhotos((previous) => ({ ...previous, [card.id]: url }));
-        } catch {
-          // Une photo indisponible sera signalée dans son emplacement.
+        } catch (err: any) {
+          if (!active) return;
+
+          const status = err.response?.status;
+
+          setPhotoErrors((previous) => ({
+            ...previous,
+            [card.id]: status
+              ? `Photo indisponible (erreur HTTP ${status}).`
+              : "Impossible de récupérer cette photo. Vérifiez la connexion au serveur."
+          }));
         }
       }
     };
@@ -170,9 +183,19 @@ const ValidationCartes: React.FC = () => {
                 <div className="grid gap-5 p-5 sm:grid-cols-[145px_1fr]">
                   <div className="mx-auto h-44 w-36 overflow-hidden rounded-2xl border-2 border-amber-300/40 bg-white/5">
                     {photos[card.id] ? (
-                      <img src={photos[card.id]} alt="Photo d'identité du membre" className="h-full w-full object-cover" />
+                      <img
+                        src={photos[card.id]}
+                        alt="Photo d'identité du membre"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : photoErrors[card.id] ? (
+                      <div className="flex h-full items-center justify-center p-3 text-center text-xs text-red-300">
+                        {photoErrors[card.id]}
+                      </div>
                     ) : (
-                      <div className="flex h-full items-center justify-center p-3 text-center text-xs text-white/40">Chargement de la photo...</div>
+                      <div className="flex h-full items-center justify-center p-3 text-center text-xs text-white/40">
+                        Chargement de la photo...
+                      </div>
                     )}
                   </div>
 
