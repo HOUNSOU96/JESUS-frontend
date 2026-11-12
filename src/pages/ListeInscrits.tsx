@@ -337,16 +337,46 @@ const ListeInscrits: React.FC = () => {
 
     const level = niveaux[index];
 
-    const roleName = window.prompt(
-      "Intitulé de la fonction à attribuer :",
-      level === "national"
-        ? "Responsable national"
-        : level === "diocesan"
-          ? "Responsable diocésain"
-          : "Responsable paroissial"
+    const territoire =
+      level === "national" ? "national" :
+      level === "diocesan" ? "diocésain" : "paroissial";
+
+    const fonctions = [
+      `Premier responsable ${territoire}`,
+      `Responsable adjoint ${territoire}`,
+      ...(level === "diocesan" ? ["Vice-président diocésain"] : []),
+      `1er trésorier ${territoire}`,
+      `2e trésorier ${territoire}`,
+      `1er organisateur ${territoire}`,
+      `2e organisateur ${territoire}`,
+      `Responsable des jeux et griots ${territoire}`,
+      `Aumônier ${territoire}`,
+      `Secrétaire ${territoire}`,
+      `Secrétaire adjoint ${territoire}`,
+    ];
+
+    const choixFonction = window.prompt(
+      "FONCTION À ATTRIBUER :\\n\\n" +
+      fonctions.map((fonction, index) =>
+        `${index + 1}. ${fonction}`
+      ).join("\\n") +
+      "\\n\\nSaisis le numéro de la fonction."
     );
 
-    if (!roleName?.trim()) return;
+    if (choixFonction === null) return;
+
+    const indexFonction = Number(choixFonction) - 1;
+
+    if (
+      !Number.isInteger(indexFonction) ||
+      indexFonction < 0 ||
+      indexFonction >= fonctions.length
+    ) {
+      setError("Fonction invalide.");
+      return;
+    }
+
+    const roleName = fonctions[indexFonction];
 
     const effectiveFrom = window.prompt(
       "Date de prise de fonction (AAAA-MM-JJ).\n" +
@@ -364,9 +394,7 @@ const ListeInscrits: React.FC = () => {
       return;
     }
 
-    const isPrimary = window.confirm(
-      "Cette personne sera-t-elle le premier responsable de cette fonction ?"
-    );
+    const isPrimary = roleName.startsWith("Premier responsable ");
 
     commencerTraitement(membre.id);
     setError("");
@@ -414,16 +442,57 @@ const ListeInscrits: React.FC = () => {
     membre: UserInscrit,
     responsabilite: Responsabilite
   ) => {
-    const roleName = window.prompt(
-      "Nouvel intitulé de la fonction :",
-      responsabilite.role_name
+    const level = responsabilite.level;
+
+    const territoire =
+      level === "national" ? "national" :
+      level === "diocesan" ? "diocésain" : "paroissial";
+
+    const fonctions = [
+      `Premier responsable ${territoire}`,
+      `Responsable adjoint ${territoire}`,
+      ...(level === "diocesan" ? ["Vice-président diocésain"] : []),
+      `1er trésorier ${territoire}`,
+      `2e trésorier ${territoire}`,
+      `1er organisateur ${territoire}`,
+      `2e organisateur ${territoire}`,
+      `Responsable des jeux et griots ${territoire}`,
+      `Aumônier ${territoire}`,
+      `Secrétaire ${territoire}`,
+      `Secrétaire adjoint ${territoire}`,
+    ];
+
+    // Conserver les anciennes fonctions qui ne figurent pas dans la liste.
+    if (!fonctions.includes(responsabilite.role_name)) {
+      fonctions.push(responsabilite.role_name);
+    }
+
+    const choixActuel = fonctions.indexOf(responsabilite.role_name) + 1;
+
+    const choixFonction = window.prompt(
+      "CHOISIR LA NOUVELLE FONCTION :\\n\\n" +
+      fonctions.map((fonction, index) =>
+        `${index + 1}. ${fonction}`
+      ).join("\\n") +
+      "\\n\\nSaisis le numéro de la fonction.",
+      String(choixActuel)
     );
 
-    if (!roleName?.trim()) return;
+    if (choixFonction === null) return;
 
-    const isPrimary = window.confirm(
-      "Cette personne doit-elle être le premier responsable ?"
-    );
+    const indexFonction = Number(choixFonction) - 1;
+
+    if (
+      !Number.isInteger(indexFonction) ||
+      indexFonction < 0 ||
+      indexFonction >= fonctions.length
+    ) {
+      setError("Fonction invalide.");
+      return;
+    }
+
+    const roleName = fonctions[indexFonction];
+    const isPrimary = roleName.startsWith("Premier responsable ");
 
     if (!window.confirm("Confirmer la modification de cette responsabilité ?")) {
       return;

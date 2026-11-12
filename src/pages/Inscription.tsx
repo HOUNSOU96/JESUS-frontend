@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { worldCountries } from "@/data";
+import { continents, worldCountries } from "@/data";
 import api from "@/utils/axios";
 
 type FormDataType = {
@@ -14,6 +14,7 @@ type FormDataType = {
   continent: string;
   country: string;
   diocese: string;
+  ville: string;
   parish: string;
   numero: string;
   email: string;
@@ -29,12 +30,17 @@ const initialForm: FormDataType = {
   continent: "",
   country: "",
   diocese: "",
+  ville: "",
   parish: "",
   numero: "",
   email: "",
 };
 
 
+
+type Jurisdiction = { id: number; name: string; kind: string };
+type GeoCity = { id: number; name: string };
+type GeoParish = { id: number; name: string; city_id: number | null };
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-900/30";
@@ -52,6 +58,10 @@ export default function Inscription() {
   const [loading, setLoading] = useState(false);
   const [matricule, setMatricule] = useState("");
   const [confirmationMessage, setConfirmationMessage] = useState("");
+  const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
+  const [cities, setCities] = useState<GeoCity[]>([]);
+  const [parishes, setParishes] = useState<GeoParish[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
@@ -59,7 +69,7 @@ export default function Inscription() {
   const stepFields: Array<Array<keyof FormDataType>> = [
     ["nom", "prenom", "sexe", "dateIntegration"],
     ["profession"],
-    ["continent", "country", "diocese", "parish"],
+    ["continent", "country", "diocese", "ville", "parish"],
     ["numero"],
   ];
 
@@ -94,7 +104,78 @@ export default function Inscription() {
   const selectedCountry = worldCountries.find(
     (country) => country.value === formData.country
   );
+
+  const selectedJurisdiction = jurisdictions.find(
+    (item) => item.name === formData.diocese
+  );
+
+  const selectedCity = cities.find(
+    (item) => item.name === formData.ville
+  );
+
   const indicatif = selectedCountry?.callingCode || "+";
+
+  useEffect(() => {
+    let active = true;
+
+    setJurisdictions([]);
+    setCities([]);
+    setParishes([]);
+
+    if (!formData.country) return;
+
+    setGeoLoading(true);
+    api.get(`/api/geography/jurisdictions?country=${encodeURIComponent(formData.country.toLowerCase())}`)
+      .then((response) => {
+        if (active) setJurisdictions(response.data);
+      })
+      .catch((error) => {
+        console.error("Erreur de chargement des diocèses :", error);
+        if (active) setJurisdictions([]);
+      })
+      .finally(() => {
+        if (active) setGeoLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [formData.country]);
+
+  useEffect(() => {
+    let active = true;
+    setCities([]);
+    setParishes([]);
+
+    if (!selectedJurisdiction) return;
+
+    api.get(`/api/geography/cities?jurisdiction_id=${selectedJurisdiction.id}`)
+      .then((response) => {
+        if (active) setCities(response.data);
+      })
+      .catch((error) => {
+        console.error("Erreur de chargement des villes :", error);
+        if (active) setCities([]);
+      });
+
+    return () => { active = false; };
+  }, [selectedJurisdiction?.id]);
+
+  useEffect(() => {
+    let active = true;
+    setParishes([]);
+
+    if (!selectedJurisdiction || !selectedCity) return;
+
+    api.get(`/api/geography/parishes?jurisdiction_id=${selectedJurisdiction.id}&city_id=${selectedCity.id}`)
+      .then((response) => {
+        if (active) setParishes(response.data);
+      })
+      .catch((error) => {
+        console.error("Erreur de chargement des paroisses :", error);
+        if (active) setParishes([]);
+      });
+
+    return () => { active = false; };
+  }, [selectedJurisdiction?.id, selectedCity?.id]);
 
 
   const handleChange = (
@@ -115,6 +196,7 @@ export default function Inscription() {
           country: value,
           continent: selected?.continent || "",
           diocese: "",
+          ville: "",
           parish: "",
         };
       }
@@ -122,7 +204,8 @@ export default function Inscription() {
       return {
         ...previous,
         [name]: value,
-        ...(name === "diocese" ? { parish: "" } : {}),
+        ...(name === "diocese" ? { ville: "", parish: "" } : {}),
+        ...(name === "ville" ? { parish: "" } : {}),
       };
     });
 
@@ -173,6 +256,7 @@ export default function Inscription() {
       "continent",
       "country",
       "diocese",
+      "ville",
       "parish",
       "numero",
     ];
@@ -526,28 +610,77 @@ export default function Inscription() {
                 </div>
 
                 <div>
-                  <label className={labelClass}>Diocèse *</label>
-                  <input
-                    type="text"
+                  <label className={labelClass}>Diocèse / Archidiocèse *</label>
+                  <select
                     name="diocese"
                     value={formData.diocese}
                     onChange={handleChange}
                     className={inputClass}
-                    placeholder="Saisissez votre diocèse"
-                  />
+                    disabled={!formData.country || geoLoading || jurisdictions.length === 0}
+                  >
+                    <option value="">
+                      {!formData.country
+                        ? "Choisissez d'abord un pays"
+                        : geoLoading
+                          ? "Chargement..."
+                          : jurisdictions.length
+                            ? "Sélectionnez votre diocèse"
+                            : "Aucun diocèse enregistré pour ce pays"}
+                    </option>
+                    {jurisdictions.map((item) => (
+                      <option key={item.id} value={item.name}>
+                        {item.kind === "archdiocese" ? "Archidiocèse de " : "Diocèse de "}{item.name}
+                      </option>
+                    ))}
+                  </select>
                   <FieldError name="diocese" />
                 </div>
 
                 <div>
+                  <label className={labelClass}>Ville *</label>
+                  <select
+                    name="ville"
+                    value={formData.ville}
+                    onChange={handleChange}
+                    className={inputClass}
+                    disabled={!selectedJurisdiction || cities.length === 0}
+                  >
+                    <option value="">
+                      {!selectedJurisdiction
+                        ? "Choisissez d'abord un diocèse"
+                        : cities.length
+                          ? "Sélectionnez votre ville"
+                          : "Aucune ville enregistrée"}
+                    </option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.name}>{city.name}</option>
+                    ))}
+                  </select>
+                  <FieldError name="ville" />
+                </div>
+
+                <div>
                   <label className={labelClass}>Paroisse *</label>
-                  <input
-                    type="text"
+                  <select
                     name="parish"
                     value={formData.parish}
                     onChange={handleChange}
                     className={inputClass}
-                    placeholder="Saisissez votre paroisse"
-                  />
+                    disabled={!selectedCity || parishes.length === 0}
+                  >
+                    <option value="">
+                      {!selectedCity
+                        ? "Choisissez d'abord une ville"
+                        : parishes.length
+                          ? "Sélectionnez votre paroisse"
+                          : "Aucune paroisse enregistrée dans cette ville"}
+                    </option>
+                    {parishes.map((parish) => (
+                      <option key={parish.id} value={parish.name}>
+                        {parish.name}
+                      </option>
+                    ))}
+                  </select>
                   <FieldError name="parish" />
                 </div>
               </div>
