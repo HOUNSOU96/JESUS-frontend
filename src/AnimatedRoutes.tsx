@@ -15,6 +15,9 @@ import Paroisse from "./pages/Paroisse";
 import Inscrits from "./pages/Inscrits";
 import ListeInscrits from "./pages/ListeInscrits";
 import NotFound from "./pages/NotFound";
+import MaCarte from "./pages/MaCarte";
+import ValidationCartes from "./pages/ValidationCartes";
+import RequireAdmin from "@/components/RequireAdmin";
 
 const protectedPages = [
   { path: "/matiere", Component: Matiere },
@@ -28,6 +31,27 @@ const AnimatedRoutes: React.FC = () => {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Page1 />} />
         <Route path="/login" element={<Login />} />
+
+        <Route
+          path="/ma-carte"
+          element={
+            <RequireAuth>
+              <Layout><MaCarte /></Layout>
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/admin/cartes"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <Layout><ValidationCartes /></Layout>
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+
         <Route path="/inscription" element={<Inscription />} />
 
         {protectedPages.map(({ path, Component }) => (

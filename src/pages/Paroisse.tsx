@@ -3,16 +3,23 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { continents } from "../data";
 import api from "../utils/axios";
+import UserAvatar from "../components/UserAvatar";
 
 interface DiocesanResponsible {
   id: number;
   user_id: number;
   nom: string;
   prenom: string;
+  matricule?: string;
+  photo_url?: string | null;
+  statut?: string;
   level: string;
   role_name: string;
+  country?: string;
+  diocese?: string | null;
   parish: string | null;
   is_primary: boolean;
+  is_active?: boolean;
 }
 
 const Paroisse: React.FC = () => {
@@ -27,52 +34,60 @@ const Paroisse: React.FC = () => {
     DiocesanResponsible[]
   >([]);
 
-  const [loadingResponsables, setLoadingResponsables] =
-    useState(false);
+  const [loadingResponsables, setLoadingResponsables] = useState(true);
+  const [errorResponsables, setErrorResponsables] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
 
-  const [errorResponsables, setErrorResponsables] =
-    useState("");
+  // ============================================================
+  // RECHERCHE DU TERRITOIRE
+  // ============================================================
 
-  // Trouver le continent
-  const continent = continents.find((c) =>
-    c.countries.some(
-      (p) => p.name.toLowerCase() === country?.toLowerCase()
+  const continent = continents.find((item) =>
+    item.countries.some(
+      (itemCountry) =>
+        itemCountry.name.toLowerCase() === country?.toLowerCase()
     )
   );
 
-  // Trouver le pays
   const selectedCountry = continent?.countries.find(
-    (p) => p.name.toLowerCase() === country?.toLowerCase()
+    (item) => item.name.toLowerCase() === country?.toLowerCase()
   );
 
-  // Trouver le diocèse
   const selectedDiocese = selectedCountry?.dioceses.find(
-    (d) => d.name.toLowerCase() === diocese?.toLowerCase()
+    (item) => item.name.toLowerCase() === diocese?.toLowerCase()
   );
 
-  // Récupérer les responsables du diocèse
-  useEffect(() => {
-    if (!country || !diocese || !selectedDiocese) return;
+  const parishes = selectedDiocese?.parishes || [];
 
+  // ============================================================
+  // CHARGEMENT DES RESPONSABLES
+  // ============================================================
+
+
+  useEffect(() => {
     let cancelled = false;
 
-    const fetchResponsables = async () => {
+    const load = async () => {
+      if (!country || !diocese || !selectedDiocese) {
+        setResponsables([]);
+        setLoadingResponsables(false);
+        return;
+      }
+
       setLoadingResponsables(true);
       setErrorResponsables("");
 
       try {
         const response = await api.get(
-          `/api/hierarchy/responsables/${encodeURIComponent(
-            country
-          )}/${encodeURIComponent(diocese)}`
+          `/api/hierarchy/responsables/${encodeURIComponent(country)}/${encodeURIComponent(diocese)}`
         );
 
+        if (!Array.isArray(response.data)) {
+          throw new Error("Format de réponse inattendu.");
+        }
+
         if (!cancelled) {
-          setResponsables(
-            Array.isArray(response.data)
-              ? response.data
-              : response.data.responsables || []
-          );
+          setResponsables(response.data);
         }
       } catch (error) {
         console.error(
@@ -81,8 +96,9 @@ const Paroisse: React.FC = () => {
         );
 
         if (!cancelled) {
+          setResponsables([]);
           setErrorResponsables(
-            "Impossible de charger la liste des responsables de ce diocèse."
+            "Impossible de charger les responsables de ce diocèse."
           );
         }
       } finally {
@@ -92,45 +108,89 @@ const Paroisse: React.FC = () => {
       }
     };
 
-    fetchResponsables();
+    load();
 
     return () => {
       cancelled = true;
     };
-  }, [country, diocese, selectedDiocese]);
+  }, [country, diocese, selectedDiocese, retryCount]);
+
+  // ============================================================
+  // VALIDATION DU TERRITOIRE
+  // ============================================================
 
   if (!continent || !selectedCountry) {
     return (
-      <div className="text-center py-10">
-        🌍 Pays non trouvé
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-xl">
+          <div className="text-5xl mb-4">🌍</div>
+          <h1 className="text-2xl font-bold mb-2">Pays introuvable</h1>
+          <p className="text-gray-300 mb-6">
+            Le pays demandé n'existe pas dans notre répertoire.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 transition"
+          >
+            Retour à l'accueil
+          </button>
+        </div>
       </div>
     );
   }
 
   if (!selectedDiocese) {
     return (
-      <div className="text-center py-10">
-        ⛪ Diocèse non trouvé
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-xl">
+          <div className="text-5xl mb-4">⛪</div>
+          <h1 className="text-2xl font-bold mb-2">Diocèse introuvable</h1>
+          <p className="text-gray-300 mb-6">
+            Ce diocèse n'est pas répertorié pour le pays sélectionné.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              navigate(`/pays/${encodeURIComponent(country || "")}`)
+            }
+            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 transition"
+          >
+            Retour aux diocèses
+          </button>
+        </div>
       </div>
     );
   }
 
-  const parishes = selectedDiocese.parishes || [];
+  // ============================================================
+  // NAVIGATION VERS LES MEMBRES
+  // ============================================================
 
-  // Navigation vers les membres d'une paroisse
   const handleParishClick = (parish: string) => {
     navigate(
-      `/inscrits/${encodeURIComponent(country!)}/${encodeURIComponent(
-        diocese!
-      )}/${encodeURIComponent(parish)}`
+      `/inscrits/${encodeURIComponent(country || "")}/${encodeURIComponent(diocese || "")}/${encodeURIComponent(parish)}`
     );
   };
 
-  // Regroupement des responsables par paroisse
-  const responsablesParParoisse = responsables.reduce<
+  // ============================================================
+  // ORGANISATION DES RESPONSABLES
+  // ============================================================
+
+  const responsablesDiocesains = responsables.filter(
+    (responsable) =>
+      responsable.level === "diocesan" || !responsable.parish
+  );
+
+  const responsablesParoissiaux = responsables.filter(
+    (responsable) =>
+      responsable.level === "parish" && Boolean(responsable.parish)
+  );
+
+  const groupesParoissiaux = responsablesParoissiaux.reduce<
     Record<string, DiocesanResponsible[]>
   >((groups, responsable) => {
-    const parish = responsable.parish || "Responsabilité diocésaine";
+    const parish = responsable.parish || "Autre paroisse";
 
     if (!groups[parish]) {
       groups[parish] = [];
@@ -141,202 +201,273 @@ const Paroisse: React.FC = () => {
     return groups;
   }, {});
 
-  return (
-    <motion.div
-      className="min-h-screen flex flex-col items-center px-4 py-10 text-gray-900 dark:text-white"
-      initial={{ opacity: 0, y: 30 }}
+  const renderResponsibleCard = (
+    responsable: DiocesanResponsible,
+    index: number
+  ) => (
+    <motion.article
+      key={responsable.id}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -30 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.25) }}
+      className="flex items-center gap-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-shadow"
     >
-      {/* TITRE */}
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-center text-white">
-        ⛪ Paroisses du diocèse de{" "}
-        <span className="text-blue-300">
-          {selectedDiocese.name}
-        </span>{" "}
-        ({selectedCountry.label})
-      </h1>
+      <UserAvatar
+        photoUrl={responsable.photo_url}
+        name={`${responsable.prenom} ${responsable.nom}`}
+      />
 
-      <p className="text-gray-300 text-center mb-10">
-        Découvrez les paroisses et les responsables de ce diocèse.
-      </p>
+      <div className="min-w-0 flex-1">
+        <h4 className="font-bold text-gray-900 dark:text-white break-words">
+          {responsable.prenom} {responsable.nom}
+        </h4>
 
-      {/* ================================================= */}
-      {/* SECTION 1 : LISTE DES PAROISSES */}
-      {/* ================================================= */}
+        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+          {responsable.role_name}
+        </p>
 
-      <section className="w-full max-w-5xl mb-16">
-        <h2 className="text-xl sm:text-2xl font-bold text-center mb-8 text-white">
-          🏛️ Les paroisses
-        </h2>
-
-        {parishes.length === 0 ? (
-          <p className="text-center text-gray-400">
-            Aucune paroisse enregistrée dans ce diocèse.
-          </p>
-        ) : (
-          <div className="flex flex-wrap justify-center gap-6 sm:gap-8">
-            {parishes.map((parish, index) => (
-              <div
-                key={`${parish}-${index}`}
-                className="w-28 h-28 sm:w-32 sm:h-32 md:w-36 md:h-36 perspective"
-                onClick={() => handleParishClick(parish)}
-              >
-                <motion.div
-                  className="card-3d w-full h-full rounded-full cursor-pointer"
-                  whileHover={{ rotateY: 180 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className="card-face bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-400 font-semibold text-sm sm:text-base md:text-lg flex items-center justify-center text-center rounded-full px-2">
-                    {parish}
-                  </div>
-
-                  <div className="card-face card-back bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-400 font-semibold text-xs sm:text-sm md:text-base flex items-center justify-center text-center rounded-full px-2">
-                    Liste des membres
-                  </div>
-                </motion.div>
-              </div>
-            ))}
-          </div>
+        {responsable.is_primary && (
+          <span className="inline-flex mt-2 items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/40 px-3 py-1 text-xs font-semibold text-green-800 dark:text-green-300">
+            ✓ Premier responsable
+          </span>
         )}
-      </section>
+      </div>
+    </motion.article>
+  );
 
-      {/* ================================================= */}
-      {/* SECTION 2 : RESPONSABLES DU DIOCÈSE */}
-      {/* ================================================= */}
+  // ============================================================
+  // AFFICHAGE
+  // ============================================================
 
-      <section className="w-full max-w-5xl">
-        <div className="text-center mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
-            👥 Responsables du diocèse
-          </h2>
+  return (
+    <motion.main
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.35 }}
+      className="min-h-screen px-4 py-8 sm:px-6 lg:px-8"
+    >
+      <div className="mx-auto max-w-7xl">
 
-          <p className="text-gray-300 mt-2">
-            Liste des responsables et des paroisses dont ils ont
-            la charge.
+        {/* EN-TÊTE */}
+
+        <header className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-300/30 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 mb-5">
+            🌍 {selectedCountry.label}
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white">
+            Paroisses du diocèse
+          </h1>
+
+          <p className="mt-3 text-2xl sm:text-3xl font-bold text-blue-300">
+            {selectedDiocese.name}
           </p>
-        </div>
 
-        {/* CHARGEMENT */}
-        {loadingResponsables && (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-400 mx-auto mb-4" />
+          <p className="mt-3 max-w-2xl mx-auto text-sm sm:text-base text-gray-300">
+            Retrouvez les paroisses, consultez leurs membres et découvrez
+            les responsables de votre diocèse.
+          </p>
+        </header>
 
-            <p className="text-gray-300">
-              Chargement des responsables...
+        {/* INDICATEURS */}
+
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 text-center backdrop-blur-sm">
+            <p className="text-3xl font-extrabold text-white">
+              {parishes.length}
+            </p>
+            <p className="mt-1 text-sm text-gray-300">
+              {parishes.length > 1 ? "Paroisses répertoriées" : "Paroisse répertoriée"}
             </p>
           </div>
-        )}
 
-        {/* ERREUR */}
-        {!loadingResponsables && errorResponsables && (
-          <div className="bg-red-900/30 border border-red-500 text-red-200 rounded-xl p-5 text-center">
-            {errorResponsables}
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 text-center backdrop-blur-sm">
+            <p className="text-3xl font-extrabold text-white">
+              {loadingResponsables ? "…" : responsables.length}
+            </p>
+            <p className="mt-1 text-sm text-gray-300">
+              Responsables actifs
+            </p>
           </div>
-        )}
+        </section>
 
-        {/* LISTE DES RESPONSABLES */}
-        {!loadingResponsables &&
-          !errorResponsables &&
-          responsables.length > 0 && (
-            <div className="space-y-8">
-              {Object.entries(responsablesParParoisse).map(
-                ([parish, leaders]) => (
-                  <div
-                    key={parish}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-5 sm:p-6"
-                  >
-                    <h3 className="text-lg sm:text-xl font-bold text-blue-700 dark:text-blue-400 mb-5 border-b border-gray-200 dark:border-gray-700 pb-3">
-                      ⛪ {parish}
-                    </h3>
+        {/* PAROISSES */}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {leaders.map((responsable) => (
-                        <motion.div
-                          key={responsable.id}
-                          className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 border border-gray-200 dark:border-gray-600"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-2xl">
-                              👤
-                            </div>
+        <section className="mb-16">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white">
+                🏛️ Les paroisses
+              </h2>
+              <p className="text-sm text-gray-300 mt-1">
+                Sélectionnez une paroisse pour consulter ses membres.
+              </p>
+            </div>
+          </div>
 
-                            <div className="flex-1 min-w-0">
-                              <p className="font-bold text-gray-900 dark:text-white">
-                                {responsable.prenom}{" "}
-                                {responsable.nom}
-                              </p>
-
-                              <p className="text-sm text-blue-700 dark:text-blue-300">
-{responsable.role_name}
-                              </p>
-                            </div>
-                          </div>
-
-                          {responsable.is_primary && (
-                            <div className="mt-3">
-                              <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                Premier responsable
-                              </span>
-                            </div>
-                          )}
-                        </motion.div>
-                      ))}
-                    </div>
+          {parishes.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center">
+              <div className="text-4xl mb-3">🏛️</div>
+              <p className="font-semibold text-white">
+                Aucune paroisse enregistrée
+              </p>
+              <p className="text-sm text-gray-300 mt-2">
+                Aucune paroisse n'est actuellement répertoriée dans ce diocèse.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {parishes.map((parish, index) => (
+                <motion.button
+                  key={`${parish}-${index}`}
+                  type="button"
+                  onClick={() => handleParishClick(parish)}
+                  whileHover={{ y: -5 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="group min-h-40 rounded-2xl border border-white/10 bg-white p-6 text-left shadow-lg transition-all hover:border-blue-300 hover:shadow-blue-900/20 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl transition-colors group-hover:bg-blue-200">
+                      ⛪
+                    </span>
+                    <span className="text-blue-600 text-xl transition-transform group-hover:translate-x-1">
+                      →
+                    </span>
                   </div>
-                )
-              )}
+
+                  <h3 className="mt-5 text-lg font-bold text-gray-900">
+                    {parish}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-gray-500">
+                    Consulter les membres
+                  </p>
+                </motion.button>
+              ))}
             </div>
           )}
+        </section>
 
-        {/* AUCUN RESPONSABLE */}
-        {!loadingResponsables &&
-          !errorResponsables &&
-          responsables.length === 0 && (
-            <div className="bg-white/10 border border-white/20 rounded-xl p-8 text-center">
-              <p className="text-4xl mb-3">👥</p>
+        {/* RESPONSABLES */}
 
-              <p className="text-gray-200 font-semibold">
-                Aucun responsable enregistré pour ce diocèse.
+        <section>
+          <div className="mb-7">
+            <h2 className="text-2xl font-bold text-white">
+              👥 Responsables du diocèse
+            </h2>
+            <p className="mt-2 text-sm text-gray-300">
+              Les personnes chargées de l'organisation et de
+              l'accompagnement des communautés.
+            </p>
+          </div>
+
+          {/* CHARGEMENT */}
+
+          {loadingResponsables && (
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
+              <p className="mt-4 text-gray-200">
+                Chargement des responsables...
               </p>
             </div>
           )}
-      </section>
 
-      {/* STYLES 3D */}
-      <style>{`
-        .perspective {
-          perspective: 1000px;
-        }
+          {/* ERREUR */}
 
-        .card-3d {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          transform-style: preserve-3d;
-          transition: transform 0.6s;
-        }
+          {!loadingResponsables && errorResponsables && (
+            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-6 text-center">
+              <p className="font-semibold text-red-200">
+                {errorResponsables}
+              </p>
 
-        .card-3d:hover {
-          transform: rotateY(180deg);
-        }
+              <button
+                type="button"
+                onClick={() => setRetryCount((count) => count + 1)}
+                className="mt-4 rounded-xl bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700 transition"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
 
-        .card-face {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          backface-visibility: hidden;
-          border-radius: 9999px;
-        }
+          {/* LISTE */}
 
-        .card-back {
-          transform: rotateY(180deg);
-        }
-      `}</style>
-    </motion.div>
+          {!loadingResponsables &&
+            !errorResponsables &&
+            responsables.length > 0 && (
+              <div className="space-y-10">
+
+                {/* RESPONSABLES DIOCÉSAINS */}
+
+                {responsablesDiocesains.length > 0 && (
+                  <div>
+                    <div className="mb-5 flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-xl">
+                        ⛪
+                      </span>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">
+                          Responsabilité diocésaine
+                        </h3>
+                        <p className="text-xs text-gray-300">
+                          {responsablesDiocesains.length} responsable(s)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {responsablesDiocesains.map(renderResponsibleCard)}
+                    </div>
+                  </div>
+                )}
+
+                {/* RESPONSABLES PAROISSIAUX */}
+
+                {Object.entries(groupesParoissiaux).map(
+                  ([parish, leaders]) => (
+                    <div key={parish}>
+                      <div className="mb-5 flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/20 text-xl">
+                          🏛️
+                        </span>
+                        <div>
+                          <h3 className="text-lg font-bold text-white">
+                            {parish}
+                          </h3>
+                          <p className="text-xs text-gray-300">
+                            {leaders.length} responsable(s)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {leaders.map(renderResponsibleCard)}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+          {/* AUCUN RESPONSABLE */}
+
+          {!loadingResponsables &&
+            !errorResponsables &&
+            responsables.length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+                <div className="text-5xl mb-4">👥</div>
+                <h3 className="font-bold text-white">
+                  Aucun responsable enregistré
+                </h3>
+                <p className="mt-2 text-sm text-gray-300">
+                  Aucun responsable actif n'est actuellement affecté à ce diocèse.
+                </p>
+              </div>
+            )}
+        </section>
+      </div>
+    </motion.main>
   );
 };
 

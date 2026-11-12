@@ -1,13 +1,16 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+
 import api from "@/utils/axios";
 import { useAuth } from "@/hooks/useAuth";
-import { motion } from "framer-motion";
+import UserAvatar from "@/components/UserAvatar";
 
 interface UserInscrit {
   id: number;
   nom: string;
   prenom: string;
+  photo_url?: string | null;
   matricule: string | null;
   sexe?: string | null;
   date_integration?: string | null;
@@ -21,6 +24,7 @@ interface UserInscrit {
   numero_whatsapp?: string | null;
   email?: string | null;
   date_inscription?: string | null;
+  created_at?: string | null;
   is_validated: boolean;
   is_blocked?: boolean;
   is_active?: boolean;
@@ -31,6 +35,16 @@ interface UserInscrit {
   last_seen?: string | null;
 }
 
+interface ListeResponse {
+  total: number;
+  pending_total: number;
+  page: number;
+  page_size: number;
+  inscrits: UserInscrit[];
+}
+
+type StatusFilter = "all" | "pending" | "validated" | "refused";
+
 const PAGE_SIZE = 10;
 
 const formatDate = (value?: string | null) => {
@@ -38,9 +52,26 @@ const formatDate = (value?: string | null) => {
 
   const date = new Date(value);
 
-  return Number.isNaN(date.getTime())
-    ? "Non renseignée"
-    : date.toLocaleString("fr-FR");
+  if (Number.isNaN(date.getTime())) {
+    return "Non renseignée";
+  }
+
+  return date.toLocaleString("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
+
+const getStatus = (user: UserInscrit) => {
+  if (user.is_validated || user.status === "validated") {
+    return "validated";
+  }
+
+  if (user.status === "refused") {
+    return "refused";
+  }
+
+  return "pending";
 };
 
 const Info = ({
@@ -50,291 +81,852 @@ const Info = ({
   label: string;
   value?: string | null;
 }) => (
-  <div className="min-w-0">
-    <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+  <div className="min-w-0 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60">
+    <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
       {label}
     </p>
-    <p className="break-words text-sm text-gray-900 dark:text-gray-100">
+
+    <p className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
       {value || "Non renseigné"}
     </p>
   </div>
 );
+
+const StatusBadge = ({ status }: { status: string }) => {
+  const config = {
+    validated: {
+      label: "Validé",
+      className: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+      icon: "✓",
+    },
+    refused: {
+      label: "Refusé",
+      className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+      icon: "✕",
+    },
+    pending: {
+      label: "En attente",
+      className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+      icon: "◷",
+    },
+  }[status] || {
+    label: "En attente",
+    className: "bg-amber-100 text-amber-800",
+    icon: "◷",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${config.className}`}
+    >
+      <span>{config.icon}</span>
+      {config.label}
+    </span>
+  );
+};
 
 const ListeInscrits: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [inscrits, setInscrits] = useState<UserInscrit[]>([]);
-  const [loadingListe, setLoadingListe] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
 
-  const observer = useRef<IntersectionObserver | null>(null);
+  const [page, setPage] = useState(1);
+  const [loadingListe, setLoadingListe] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const lastInscritRef = useCallback(
-    (node: HTMLElement | null) => {
-      if (loadingListe) return;
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-      if (observer.current) observer.current.disconnect();
-
-      if (!node) return;
-
-      observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasMore) {
-          setPage((prev) => prev + 1);
-        }
-      });
-
-      observer.current.observe(node);
-    },
-    [loadingListe, hasMore]
+  const [processingIds, setProcessingIds] = useState<Set<number>>(
+    new Set()
   );
 
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // --------------------------------------------------
+  // CONTRÔLE D'ACCÈS
+  // --------------------------------------------------
+
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) navigate("/login");
-      else if (!user.is_admin) navigate("/matiere");
+    if (authLoading) return;
+
+    if (!user) {
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    if (!user.is_admin) {
+      navigate("/matiere", { replace: true });
     }
   }, [authLoading, user, navigate]);
 
-  useEffect(() => {
-    if (!user?.is_admin || !hasMore) return;
+  // --------------------------------------------------
+  // CHARGEMENT DES INSCRITS
+  // --------------------------------------------------
 
-    let cancelled = false;
+  const chargerInscrits = useCallback(async () => {
+    if (!user?.is_admin) return;
 
-    const fetchInscrits = async () => {
-      setLoadingListe(true);
+    setLoadingListe(true);
+    setError("");
 
-      try {
-        const response = await api.get("/api/admin/liste-inscrits", {
-          params: { page, page_size: PAGE_SIZE },
-        });
-
-        if (cancelled) return;
-
-        const nouvelleListe: UserInscrit[] = response.data.inscrits || [];
-
-        setInscrits((prev) => {
-          const ids = new Set(prev.map((u) => u.id));
-          const filtered = nouvelleListe.filter((u) => !ids.has(u.id));
-          return [...prev, ...filtered];
-        });
-
-        setPendingCount(response.data.pending_total ?? 0);
-
-        if (page * PAGE_SIZE >= response.data.total) {
-          setHasMore(false);
-        }
-      } catch (err) {
-        console.error("Erreur récupération inscrits :", err);
-      } finally {
-        if (!cancelled) setLoadingListe(false);
-      }
-    };
-
-    fetchInscrits();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [page, user, hasMore]);
-
-  const handleValider = async (id: number) => {
     try {
-      const res = await api.post(`/api/admin/valider-inscrit/${id}`);
+      const response = await api.get<ListeResponse>(
+        "/api/admin/liste-inscrits",
+        {
+          params: {
+            page,
+            page_size: PAGE_SIZE,
+          },
+        }
+      );
 
-      setInscrits((prev) =>
-        prev.map((u) =>
-          u.id === id
-            ? { ...u, status: "validated", is_validated: true }
-            : u
+      const data = response.data;
+
+      setInscrits(Array.isArray(data.inscrits) ? data.inscrits : []);
+      setTotal(Number(data.total) || 0);
+      setPendingCount(Number(data.pending_total) || 0);
+    } catch (err) {
+      console.error("Erreur récupération des inscrits :", err);
+
+      setError(
+        "Impossible de récupérer les inscriptions. Vérifie ta connexion et réessaie."
+      );
+    } finally {
+      setLoadingListe(false);
+    }
+  }, [user, page, refreshKey]);
+
+  useEffect(() => {
+    chargerInscrits();
+  }, [chargerInscrits]);
+
+  // --------------------------------------------------
+  // RECHERCHE ET FILTRES
+  // --------------------------------------------------
+
+  const inscritsFiltres = useMemo(() => {
+    const terme = search.trim().toLowerCase();
+
+    return inscrits.filter((inscrit) => {
+      const correspondRecherche =
+        !terme ||
+        [
+          inscrit.nom,
+          inscrit.prenom,
+          inscrit.matricule,
+          inscrit.email,
+          inscrit.numero_whatsapp,
+          inscrit.pays,
+          inscrit.diocese,
+          inscrit.paroisse,
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLowerCase().includes(terme)
+          );
+
+      const statut = getStatus(inscrit);
+
+      const correspondStatut =
+        statusFilter === "all" || statut === statusFilter;
+
+      return correspondRecherche && correspondStatut;
+    });
+  }, [inscrits, search, statusFilter]);
+
+  // --------------------------------------------------
+  // MISE À JOUR DU TRAITEMENT
+  // --------------------------------------------------
+
+  const terminerTraitement = (id: number) => {
+    setProcessingIds((previous) => {
+      const next = new Set(previous);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const commencerTraitement = (id: number) => {
+    setProcessingIds((previous) => new Set(previous).add(id));
+  };
+
+  // --------------------------------------------------
+  // VALIDATION
+  // --------------------------------------------------
+
+  const handleValider = async (inscrit: UserInscrit) => {
+    const id = inscrit.id;
+
+    if (processingIds.has(id)) return;
+
+    if (getStatus(inscrit) !== "pending") return;
+
+    const confirmation = window.confirm(
+      `Confirmer la validation de ${inscrit.nom} ${inscrit.prenom} ?`
+    );
+
+    if (!confirmation) return;
+
+    commencerTraitement(id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.post(
+        `/api/admin/valider-inscrit/${id}`
+      );
+
+      setInscrits((previous) =>
+        previous.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: "validated",
+                is_validated: true,
+              }
+            : item
         )
       );
 
-      setPendingCount((prev) => Math.max(0, prev - 1));
-      alert(res.data.message);
+      setPendingCount((previous) => Math.max(0, previous - 1));
+
+      setSuccess(
+        response.data?.message || "Inscription validée avec succès."
+      );
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la validation.");
+      console.error("Erreur validation :", err);
+
+      setError(
+        "La validation a échoué. Vérifie ta connexion et réessaie."
+      );
+    } finally {
+      terminerTraitement(id);
     }
   };
 
-  const handleRefuser = async (id: number) => {
+  // --------------------------------------------------
+  // REFUS
+  // --------------------------------------------------
+
+  const handleRefuser = async (inscrit: UserInscrit) => {
+    const id = inscrit.id;
+
+    if (processingIds.has(id)) return;
+
+    if (getStatus(inscrit) !== "pending") return;
+
+    const confirmation = window.confirm(
+      `Confirmer le refus de l'inscription de ${inscrit.nom} ${inscrit.prenom} ?\n\nCette opération conservera sa fiche dans la base de données.`
+    );
+
+    if (!confirmation) return;
+
+    commencerTraitement(id);
+    setError("");
+    setSuccess("");
+
     try {
-      const res = await api.post(`/api/admin/refuser-inscrit/${id}`);
+      const response = await api.post(
+        `/api/admin/refuser-inscrit/${id}`
+      );
 
-      setInscrits((prev) => prev.filter((u) => u.id !== id));
-      setPendingCount((prev) => Math.max(0, prev - 1));
+      // La fiche reste visible : le backend conserve le membre.
+      setInscrits((previous) =>
+        previous.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                status: "refused",
+                is_validated: false,
+              }
+            : item
+        )
+      );
 
-      alert(res.data.message);
+      setPendingCount((previous) => Math.max(0, previous - 1));
+
+      setSuccess(
+        response.data?.message || "Inscription refusée."
+      );
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors du refus.");
+      console.error("Erreur refus :", err);
+
+      setError(
+        "Le refus a échoué. Vérifie ta connexion et réessaie."
+      );
+    } finally {
+      terminerTraitement(id);
     }
   };
 
-  if (authLoading) return <div>Chargement...</div>;
+  // --------------------------------------------------
+  // RAFRAÎCHISSEMENT
+  // --------------------------------------------------
+
+  const actualiser = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setSuccess("");
+    setError("");
+    setPage(1);
+    setRefreshKey((previous) => previous + 1);
+  };
+
+  // --------------------------------------------------
+  // AFFICHAGE CHARGEMENT
+  // --------------------------------------------------
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <p className="font-medium text-gray-600 dark:text-gray-300">
+            Vérification de votre accès...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user?.is_admin) {
+    return null;
+  }
+
+  // --------------------------------------------------
+  // INTERFACE PRINCIPALE
+  // --------------------------------------------------
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
+    <motion.main
+      initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -30 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gray-100 p-4 dark:bg-gray-900 md:p-6"
+      exit={{ opacity: 0, y: -18 }}
+      transition={{ duration: 0.35 }}
+      className="min-h-screen bg-gray-50 p-4 dark:bg-gray-950 sm:p-6 lg:p-8"
     >
-      <h1 className="mb-4 text-center text-3xl font-bold text-blue-700 dark:text-white">
-        Liste des membres inscrits
-      </h1>
+      <div className="mx-auto max-w-7xl">
 
-      <p className="mb-6 text-center text-gray-600 dark:text-gray-300">
-        Inscriptions en attente :{" "}
-        <span className="font-bold">{pendingCount}</span>
-      </p>
+        {/* EN-TÊTE */}
 
-      {inscrits.length === 0 && !loadingListe ? (
-        <p className="text-center text-gray-600 dark:text-gray-300">
-          Aucun inscrit pour le moment.
-        </p>
-      ) : (
-        <div className="space-y-4">
-          {inscrits.map((i, index) => {
-            const isLast = inscrits.length === index + 1;
+        <section className="mb-7 overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 p-6 text-white shadow-xl sm:p-8">
+          <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+                <span className="h-2 w-2 rounded-full bg-green-400" />
+                Espace administration
+              </div>
 
-            return (
-              <motion.article
-                key={i.id}
-                ref={isLast ? lastInscritRef : null}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-md dark:border-gray-700 dark:bg-gray-800"
+              <h1 className="text-2xl font-extrabold sm:text-3xl">
+                Gestion des inscriptions
+              </h1>
+
+              <p className="mt-2 max-w-xl text-sm text-blue-100 sm:text-base">
+                Consulte les demandes, vérifie les informations et
+                décide de l'admission des nouveaux membres.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={actualiser}
+              disabled={loadingListe}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-bold transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className={loadingListe ? "animate-spin" : ""}>
+                ↻
+              </span>
+              Actualiser
+            </button>
+          </div>
+        </section>
+
+        {/* INDICATEURS */}
+
+        <section className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                  Total des inscrits
+                </p>
+                <p className="mt-2 text-3xl font-extrabold text-gray-900 dark:text-white">
+                  {total}
+                </p>
+              </div>
+
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-2xl dark:bg-blue-900/40">
+                👥
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm dark:border-amber-900/50 dark:bg-gray-900">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                  Inscriptions en attente
+                </p>
+                <p className="mt-2 text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+                  {pendingCount}
+                </p>
+              </div>
+
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-2xl dark:bg-amber-900/40">
+                ⏳
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm dark:border-green-900/50 dark:bg-gray-900">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                  Membres validés sur cette page
+                </p>
+                <p className="mt-2 text-3xl font-extrabold text-green-600 dark:text-green-400">
+                  {inscrits.filter((item) => getStatus(item) === "validated").length}
+                </p>
+              </div>
+
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100 text-2xl dark:bg-green-900/40">
+                ✓
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        {/* MESSAGES */}
+
+        {error && (
+          <div
+            role="alert"
+            className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+          >
+            <span>{error}</span>
+
+            <button
+              type="button"
+              onClick={() => setError("")}
+              className="font-bold"
+              aria-label="Fermer le message"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {success && (
+          <div
+            role="status"
+            className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300"
+          >
+            <span>{success}</span>
+
+            <button
+              type="button"
+              onClick={() => setSuccess("")}
+              className="font-bold"
+              aria-label="Fermer le message"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* RECHERCHE ET FILTRES */}
+
+        <section className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-5">
+
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              Répertoire des membres
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Recherche et filtres appliqués aux inscrits de la page actuelle.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+
+            <div>
+              <label
+                htmlFor="recherche-inscrit"
+                className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
               >
-                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                      {i.nom} {i.prenom}
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      Matricule : {i.matricule || "Non attribué"}
-                    </p>
-                  </div>
+                Rechercher un membre
+              </label>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                      i.is_validated
-                        ? "bg-green-100 text-green-800"
-                        : i.status === "refused"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {i.is_validated
-                        ? "Validé"
-                        : i.status === "refused"
-                        ? "Refusé"
-                        : "En attente"}
-                    </span>
+              <input
+                id="recherche-inscrit"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Nom, prénom, matricule, pays, email..."
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900"
+              />
+            </div>
 
-                    <span className={`rounded-full px-3 py-1 text-sm ${
-                      i.is_online
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-600"
-                    }`}>
-                      {i.is_online ? "En ligne" : "Hors ligne"}
-                    </span>
-                  </div>
-                </div>
+            <div>
+              <label
+                htmlFor="filtre-statut"
+                className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-300"
+              >
+                Filtrer par statut
+              </label>
 
-                <details className="mt-4">
-                  <summary className="cursor-pointer font-semibold text-blue-700 dark:text-blue-400">
-                    Consulter toutes les informations
-                  </summary>
+              <select
+                id="filtre-statut"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as StatusFilter)
+                }
+                className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:ring-blue-900"
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="pending">En attente</option>
+                <option value="validated">Validés</option>
+                <option value="refused">Refusés</option>
+              </select>
+            </div>
 
-                  <div className="mt-4 grid grid-cols-1 gap-4 border-t border-gray-200 pt-4 dark:border-gray-700 sm:grid-cols-2 lg:grid-cols-3">
-                    <Info label="Nom" value={i.nom} />
-                    <Info label="Prénom" value={i.prenom} />
-                    <Info label="Sexe" value={i.sexe} />
-                    <Info label="Date d'intégration" value={formatDate(i.date_integration)} />
+          </div>
+        </section>
 
-                    <Info label="Statut déclaré" value={i.requested_role} />
-                    <Info label="Statut du membre" value={i.statut} />
-                    <Info label="Profession" value={i.profession} />
+        {/* INFORMATIONS SUR LA PAGINATION */}
 
-                    <Info label="Continent" value={i.continent} />
-                    <Info label="Pays" value={i.pays} />
-                    <Info label="Diocèse" value={i.diocese} />
-                    <Info label="Paroisse" value={i.paroisse} />
+        <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Page <strong>{page}</strong> sur <strong>{totalPages}</strong>
+            {" · "}
+            {total} inscription(s) au total
+          </p>
 
-                    <Info label="WhatsApp" value={i.numero_whatsapp} />
-                    <Info label="Adresse e-mail" value={i.email} />
-
-                    <Info label="Matricule" value={i.matricule} />
-                    <Info label="Date d'inscription" value={formatDate(i.date_inscription)} />
-                    <Info label="Dernière activité" value={formatDate(i.last_seen)} />
-                    <Info label="Dernier avertissement" value={formatDate(i.last_warning)} />
-
-                    <Info
-                      label="Compte"
-                      value={i.is_active ? "Actif" : "Désactivé"}
-                    />
-                    <Info
-                      label="Blocage"
-                      value={i.is_blocked ? "Bloqué" : "Non bloqué"}
-                    />
-                    <Info
-                      label="Vérification"
-                      value={i.is_verified ? "Vérifié" : "Non vérifié"}
-                    />
-                  </div>
-                </details>
-
-                {!i.is_validated && i.status !== "refused" && (
-                  <div className="mt-4 flex flex-wrap gap-3 border-t border-gray-200 pt-4 dark:border-gray-700">
-                    <button
-                      onClick={() => handleValider(i.id)}
-                      className="rounded-lg bg-green-600 px-4 py-2 text-white transition hover:bg-green-700"
-                    >
-                      Valider
-                    </button>
-
-                    <button
-                      onClick={() => handleRefuser(i.id)}
-                      className="rounded-lg bg-red-600 px-4 py-2 text-white transition hover:bg-red-700"
-                    >
-                      Refuser
-                    </button>
-                  </div>
-                )}
-              </motion.article>
-            );
-          })}
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+            {inscritsFiltres.length} résultat(s) affiché(s)
+          </p>
         </div>
-      )}
 
-      {loadingListe && (
-        <p className="mt-4 text-center text-gray-600 dark:text-gray-300">
-          Chargement des inscriptions...
-        </p>
-      )}
+        {/* LISTE DES INSCRITS */}
 
-      <div className="mt-8 text-center">
-        <button
-          onClick={() => navigate("/matiere")}
-          disabled={pendingCount > 0}
-          className={`rounded-xl px-6 py-3 font-semibold transition ${
-            pendingCount > 0
-              ? "cursor-not-allowed bg-gray-400 text-gray-700"
-              : "bg-blue-600 text-white hover:bg-blue-700"
-          }`}
-        >
-          CONTINUER
-        </button>
+        {loadingListe && inscrits.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center dark:border-gray-800 dark:bg-gray-900">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
 
-        {pendingCount > 0 && (
-          <p className="mt-2 text-sm text-red-600">
-            Vous devez traiter toutes les inscriptions avant de continuer.
+            <p className="font-medium text-gray-600 dark:text-gray-300">
+              Chargement des inscriptions...
+            </p>
+          </div>
+        ) : inscritsFiltres.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white px-5 py-16 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+
+            <div className="mb-4 text-5xl">📋</div>
+
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {inscrits.length === 0
+                ? "Aucune inscription"
+                : "Aucun résultat correspondant"}
+            </h3>
+
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {inscrits.length === 0
+                ? "Les nouvelles inscriptions apparaîtront ici."
+                : "Modifie ta recherche ou sélectionne un autre statut."}
+            </p>
+
+          </div>
+        ) : (
+          <div className="space-y-5">
+
+            {inscritsFiltres.map((inscrit, index) => {
+              const status = getStatus(inscrit);
+              const processing = processingIds.has(inscrit.id);
+
+              return (
+                <motion.article
+                  key={inscrit.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, delay: index * 0.025 }}
+                  className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+                >
+
+                  {/* IDENTITÉ */}
+
+                  <div className="flex flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center">
+
+                    <div className="flex min-w-0 items-center gap-4">
+
+                      <UserAvatar
+                        photoUrl={inscrit.photo_url}
+                        name={`${inscrit.prenom} ${inscrit.nom}`}
+                      />
+
+                      <div className="min-w-0">
+                        <h3 className="break-words text-lg font-extrabold text-gray-900 dark:text-white">
+                          {inscrit.nom} {inscrit.prenom}
+                        </h3>
+
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          Matricule :{" "}
+                          <span className="font-bold text-gray-700 dark:text-gray-200">
+                            {inscrit.matricule || "Non attribué"}
+                          </span>
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-400">
+                          Inscription : {formatDate(inscrit.date_inscription)}
+                        </p>
+                      </div>
+
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge status={status} />
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${
+                          inscrit.is_online
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                        }`}
+                      >
+                        {inscrit.is_online ? "● En ligne" : "○ Hors ligne"}
+                      </span>
+                    </div>
+
+                  </div>
+
+                  {/* LOCALISATION */}
+
+                  <div className="grid grid-cols-1 gap-3 border-t border-gray-100 bg-gray-50/70 px-5 py-4 dark:border-gray-800 dark:bg-gray-950/40 sm:grid-cols-3">
+
+                    <Info label="Pays" value={inscrit.pays} />
+                    <Info label="Diocèse" value={inscrit.diocese} />
+                    <Info label="Paroisse" value={inscrit.paroisse} />
+
+                  </div>
+
+                  {/* DÉTAILS */}
+
+                  <div className="px-5 py-4">
+
+                    <details>
+                      <summary className="cursor-pointer select-none text-sm font-bold text-blue-700 transition hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                        Consulter toutes les informations du membre
+                      </summary>
+
+                      <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-200 pt-4 dark:border-gray-800 sm:grid-cols-2 lg:grid-cols-3">
+
+                        <Info label="Nom" value={inscrit.nom} />
+                        <Info label="Prénom" value={inscrit.prenom} />
+                        <Info label="Sexe" value={inscrit.sexe} />
+
+                        <Info
+                          label="Date d'intégration"
+                          value={formatDate(inscrit.date_integration)}
+                        />
+
+                        <Info
+                          label="Statut déclaré"
+                          value={inscrit.requested_role}
+                        />
+
+                        <Info
+                          label="Statut du membre"
+                          value={inscrit.statut}
+                        />
+
+                        <Info label="Profession" value={inscrit.profession} />
+
+                        <Info label="Continent" value={inscrit.continent} />
+                        <Info label="Pays" value={inscrit.pays} />
+                        <Info label="Diocèse" value={inscrit.diocese} />
+                        <Info label="Paroisse" value={inscrit.paroisse} />
+
+                        <Info
+                          label="WhatsApp"
+                          value={inscrit.numero_whatsapp}
+                        />
+
+                        <Info
+                          label="Adresse e-mail"
+                          value={inscrit.email}
+                        />
+
+                        <Info
+                          label="Matricule"
+                          value={inscrit.matricule}
+                        />
+
+                        <Info
+                          label="Date d'inscription"
+                          value={formatDate(inscrit.date_inscription)}
+                        />
+
+                        <Info
+                          label="Dernière activité"
+                          value={formatDate(inscrit.last_seen)}
+                        />
+
+                        <Info
+                          label="Dernier avertissement"
+                          value={formatDate(inscrit.last_warning)}
+                        />
+
+                        <Info
+                          label="Compte"
+                          value={inscrit.is_active ? "Actif" : "Désactivé"}
+                        />
+
+                        <Info
+                          label="Blocage"
+                          value={inscrit.is_blocked ? "Bloqué" : "Non bloqué"}
+                        />
+
+                        <Info
+                          label="Vérification"
+                          value={inscrit.is_verified ? "Vérifié" : "Non vérifié"}
+                        />
+
+                      </div>
+                    </details>
+
+                  </div>
+
+                  {/* ACTIONS */}
+
+                  {status === "pending" && (
+                    <div className="flex flex-col gap-3 border-t border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-800 dark:bg-gray-950/40 sm:flex-row sm:justify-end">
+
+                      <button
+                        type="button"
+                        onClick={() => handleRefuser(inscrit)}
+                        disabled={processing}
+                        className="rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-red-950/40"
+                      >
+                        {processing ? "Traitement..." : "Refuser l'inscription"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleValider(inscrit)}
+                        disabled={processing}
+                        className="rounded-xl bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {processing ? "Traitement..." : "✓ Valider l'inscription"}
+                      </button>
+
+                    </div>
+                  )}
+
+                  {status === "refused" && (
+                    <div className="border-t border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                      Cette inscription a été refusée. La fiche du membre est conservée.
+                    </div>
+                  )}
+
+                  {status === "validated" && (
+                    <div className="border-t border-green-100 bg-green-50 px-5 py-3 text-sm font-semibold text-green-700 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">
+                      Cette inscription a été validée.
+                    </div>
+                  )}
+
+                </motion.article>
+              );
+            })}
+
+          </div>
+        )}
+
+        {/* CHARGEMENT COMPLÉMENTAIRE */}
+
+        {loadingListe && inscrits.length > 0 && (
+          <p className="mt-5 text-center text-sm font-medium text-blue-600 dark:text-blue-400">
+            Actualisation des données...
           </p>
         )}
+
+        {/* PAGINATION */}
+
+        <section className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:flex-row">
+
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Page {page} / {totalPages}
+          </p>
+
+          <div className="flex items-center gap-3">
+
+            <button
+              type="button"
+              onClick={() => setPage((previous) => Math.max(1, previous - 1))}
+              disabled={page <= 1 || loadingListe}
+              className="rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              ← Précédent
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setPage((previous) => Math.min(totalPages, previous + 1))
+              }
+              disabled={page >= totalPages || loadingListe}
+              className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Suivant →
+            </button>
+
+          </div>
+
+        </section>
+
+        {/* CONTINUER */}
+
+        <section className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-gray-900">
+
+          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">
+            Étape de gestion des inscriptions
+          </h2>
+
+          {pendingCount > 0 ? (
+            <p className="mx-auto mt-2 max-w-xl text-sm text-amber-700 dark:text-amber-400">
+              Il reste {pendingCount} inscription(s) en attente.
+              Tu dois traiter toutes les demandes avant de continuer.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+              Toutes les inscriptions ont été traitées. Tu peux continuer.
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => navigate("/matiere")}
+            disabled={pendingCount > 0 || loadingListe}
+            className={`mt-5 rounded-xl px-8 py-3 font-extrabold shadow-sm transition ${
+              pendingCount > 0 || loadingListe
+                ? "cursor-not-allowed bg-gray-300 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                : "bg-blue-700 text-white hover:bg-blue-800"
+            }`}
+          >
+            CONTINUER →
+          </button>
+
+        </section>
+
       </div>
-    </motion.div>
+    </motion.main>
   );
 };
 

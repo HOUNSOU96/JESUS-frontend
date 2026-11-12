@@ -1,330 +1,678 @@
-// 📁 Inscription.tsx
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import api from '@/utils/axios'; // ton axios configuré
+import React, { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
+import { Link, useNavigate } from "react-router-dom";
+import { continents } from "@/data";
+import api from "@/utils/axios";
 
-const data: Record<
-  string,
-  Record<string, Record<string, string[]>>
-> = {
-  Afrique: {
-    Benin: {
-      "Cotonou": ["Paroisse Sainte Rita", "Paroisse Saint Michel"],
-      "Parakou": ["Paroisse Saint Pierre", "Paroisse Sainte Thérèse"],
-      "Porto-Novo": ["Paroisse Saint Pierre Saint Paul", "Paroisse Saint Paul de Dowa"]
-    },
-    Togo: {
-      "Lomé": ["Paroisse Sacré Cœur", "Paroisse Saint Jean"],
-      "Kara": ["Paroisse Saint Joseph"]
-    }
-  },
-  Europe: {
-    France: {
-      "Paris": ["Paroisse Notre Dame", "Paroisse Saint Sulpice"],
-      "Lyon": ["Paroisse Saint Irénée"]
-    },
-    Italie: {
-      "Rome": ["Paroisse Saint Pierre", "Paroisse Saint Paul"]
-    }
-  }
+type FormDataType = {
+  nom: string;
+  prenom: string;
+  sexe: string;
+  dateIntegration: string;
+  statut: string;
+  profession: string;
+  continent: string;
+  country: string;
+  diocese: string;
+  parish: string;
+  numero: string;
+  email: string;
+};
+
+const initialForm: FormDataType = {
+  nom: "",
+  prenom: "",
+  sexe: "",
+  dateIntegration: "",
+  statut: "Membre",
+  profession: "",
+  continent: "",
+  country: "",
+  diocese: "",
+  parish: "",
+  numero: "",
+  email: "",
 };
 
 const countryCodes: Record<string, string> = {
-  Benin: "+229",
-  Togo: "+228",
-  France: "+33",
-  Italie: "+39",
+  benin: "+229",
+  nigeria: "+234",
+  kenya: "+254",
+  france: "+33",
+  allemagne: "+49",
+  espagne: "+34",
+  chine: "+86",
+  japon: "+81",
+  inde: "+91",
+  usa: "+1",
+  canada: "+1",
+  bresil: "+55",
+  australie: "+61",
+  nouvellezelande: "+64",
 };
 
-const Inscription: React.FC = () => {
+const inputClass =
+  "w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-900/30";
+
+const labelClass =
+  "mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-200";
+
+export default function Inscription() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    nom: '',
-    prenom: '',
-    sexe: '',
-    dateIntegration: '',
-    statut: "Membre",
-    profession: '',
-    continent: '',
-    country: '',
-    diocese: '',
-    parish: '',
-    numero: '',
-    email: '',
-  });
+  const [formData, setFormData] = useState<FormDataType>(initialForm);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [matricule, setMatricule] = useState("");
+  const [confirmationMessage, setConfirmationMessage] = useState("");
 
-  const [erreurs, setErreurs] = useState<any>({});
-  const [loadingForm, setLoadingForm] = useState(false);
-  const [matricule, setMatricule] = useState<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const selectedContinent = useMemo(
+    () => continents.find((item) => item.name === formData.continent),
+    [formData.continent]
+  );
+
+  const selectedCountry = useMemo(
+    () =>
+      selectedContinent?.countries.find(
+        (item) => item.name === formData.country
+      ),
+    [selectedContinent, formData.country]
+  );
+
+  const dioceses = selectedCountry?.dioceses ?? [];
+
+  const selectedDiocese = useMemo(
+    () => dioceses.find((item) => item.name === formData.diocese),
+    [dioceses, formData.diocese]
+  );
+
+  const parishes = selectedDiocese?.parishes ?? [];
+
+  const indicatif = countryCodes[formData.country] ?? "+";
+
+  const handleChange = (
+    event: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = event.target;
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+      ...(name === "continent"
+        ? { country: "", diocese: "", parish: "" }
+        : {}),
+      ...(name === "country" ? { diocese: "", parish: "" } : {}),
+      ...(name === "diocese" ? { parish: "" } : {}),
+    }));
+
+    setErrors((previous) => ({ ...previous, [name]: "" }));
+  };
+
+  const handlePhotoChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setErrors((previous) => ({
+        ...previous,
+        photo: "Format accepté : JPG, PNG ou WebP.",
+      }));
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((previous) => ({
+        ...previous,
+        photo: "La photographie ne doit pas dépasser 5 Mo.",
+      }));
+      event.target.value = "";
+      return;
+    }
+
+    setPhoto(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setErrors((previous) => ({ ...previous, photo: "" }));
   };
 
   const validerFormulaire = () => {
-    const newErrors: any = {};
-    if (!formData.nom) newErrors.nom = "Le nom est obligatoire.";
-    if (!formData.prenom) newErrors.prenom = "Le prénom est obligatoire.";
-    if (!formData.sexe) newErrors.sexe = "Le sexe est obligatoire.";
-    if (!formData.dateIntegration) newErrors.dateIntegration = "La date d’intégration est obligatoire.";
-    if (!formData.profession) newErrors.profession = "La profession est obligatoire.";
-    if (!formData.continent) newErrors.continent = "Le continent est obligatoire.";
-    if (!formData.country) newErrors.country = "Le pays est obligatoire.";
-    if (!formData.diocese) newErrors.diocese = "Le diocèse est obligatoire.";
-    if (!formData.parish) newErrors.parish = "La paroisse est obligatoire.";
-    if (!formData.numero) newErrors.numero = "Le numéro WhatsApp est obligatoire.";
-    setErreurs(newErrors);
+    const newErrors: Record<string, string> = {};
+
+    const requiredFields: Array<keyof FormDataType> = [
+      "nom",
+      "prenom",
+      "sexe",
+      "dateIntegration",
+      "profession",
+      "continent",
+      "country",
+      "diocese",
+      "parish",
+      "numero",
+    ];
+
+    requiredFields.forEach((field) => {
+      if (!String(formData[field]).trim()) {
+        newErrors[field] = "Ce champ est obligatoire.";
+      }
+    });
+
+    if (formData.numero && !/^[0-9\s().-]{6,20}$/.test(formData.numero)) {
+      newErrors.numero = "Vérifie le numéro de téléphone saisi.";
+    }
+
+    if (
+      formData.email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+    ) {
+      newErrors.email = "Adresse électronique invalide.";
+    }
+
+    if (!photo) {
+      newErrors.photo = "Une photographie est obligatoire.";
+    }
+
+    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const countries = formData.continent ? Object.keys(data[formData.continent] || {}) : [];
-  const dioceses = formData.country ? Object.keys(data[formData.continent]?.[formData.country] || {}) : [];
-  const parishes = formData.diocese ? data[formData.continent]?.[formData.country]?.[formData.diocese] || [] : [];
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const champTexte = (label: string, name: keyof typeof formData, type = "text") => (
-    <div>
-      <label className="text-sm font-medium text-gray-700 dark:text-white">
-        {label} <span className="text-red-600">*</span>
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={formData[name]}
-        onChange={handleChange}
-        className={`w-full mt-1 p-2 rounded-xl border ${
-          erreurs[name] ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'
-        } transition focus:outline-none`}
-      />
-      {erreurs[name] && <p className="text-red-600 text-sm mt-1">{erreurs[name]}</p>}
-    </div>
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (loading || matricule) return;
     if (!validerFormulaire()) return;
 
-    setLoadingForm(true);
+    setLoading(true);
 
     try {
-      const response = await api.post("/api/auth/register", formData);
-      setMatricule(response.data.matricule); // Le matricule renvoyé par le backend
-    } catch (err: any) {
-      console.error(err);
-      alert("Erreur lors de l'inscription : " + (err.response?.data?.message || err.message));
+      const payload = new FormData();
+
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === "statut") {
+          payload.append("statut", "Membre");
+        } else {
+          payload.append(key, value.trim());
+        }
+      });
+
+      if (photo) {
+        payload.append("photo", photo);
+      }
+
+      const response = await api.post("/api/auth/register", payload);
+
+      setMatricule(response.data.matricule);
+      setConfirmationMessage(
+        response.data.message ||
+          "Votre inscription a été enregistrée. Votre compte est en attente de validation."
+      );
+    } catch (error: any) {
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "Une erreur est survenue pendant l'inscription.";
+
+      setErrors((previous) => ({ ...previous, general: message }));
     } finally {
-      setLoadingForm(false);
+      setLoading(false);
     }
   };
 
-  return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="bg-white dark:bg-gray-800 shadow-xl rounded-2xl p-6 max-w-2xl w-full space-y-6"
-      >
-        <h2 className="text-xl font-bold text-center text-gray-800 dark:text-white">Inscription</h2>
-
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {champTexte("Nom", "nom")}
-          {champTexte("Prénom", "prenom")}
-
-          {/* Sexe */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Sexe <span className="text-red-600">*</span></label>
-            <select
-              name="sexe"
-              value={formData.sexe}
-              onChange={handleChange}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.sexe ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              <option value="Homme">Homme</option>
-              <option value="Femme">Femme</option>
-            </select>
-            {erreurs.sexe && <p className="text-red-600 text-sm mt-1">{erreurs.sexe}</p>}
-          </div>
-
-          {champTexte("Date d’intégration", "dateIntegration", "date")}
-
-          {/* Statut : toute inscription commence comme membre */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">
-              Statut
-            </label>
-            <input
-              type="text"
-              value="Membre"
-              readOnly
-              className="w-full mt-1 p-2 rounded-xl border border-gray-300 bg-gray-100 text-gray-700"
-            />
-          </div>
-
-          {/* Profession */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Profession <span className="text-red-600">*</span></label>
-            <select
-              name="profession"
-              value={formData.profession}
-              onChange={handleChange}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.profession ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              <option value="Étudiant">Étudiant</option>
-              <option value="Enseignant">Enseignant</option>
-              <option value="Médecin">Médecin</option>
-              <option value="Ingénieur">Ingénieur</option>
-              <option value="Commerçant">Commerçant</option>
-              <option value="Autre">Autre</option>
-            </select>
-            {erreurs.profession && <p className="text-red-600 text-sm mt-1">{erreurs.profession}</p>}
-          </div>
-
-          {/* Continent */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Continent <span className="text-red-600">*</span></label>
-            <select
-              name="continent"
-              value={formData.continent}
-              onChange={handleChange}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.continent ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              {Object.keys(data).map(continent => (
-                <option key={continent} value={continent}>{continent}</option>
-              ))}
-            </select>
-            {erreurs.continent && <p className="text-red-600 text-sm mt-1">{erreurs.continent}</p>}
-          </div>
-
-          {/* Pays */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Pays <span className="text-red-600">*</span></label>
-            <select
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              disabled={!formData.continent}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.country ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              {countries.map(country => (
-                <option key={country} value={country}>{country}</option>
-              ))}
-            </select>
-            {erreurs.country && <p className="text-red-600 text-sm mt-1">{erreurs.country}</p>}
-          </div>
-
-          {/* Diocèse */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Diocèse <span className="text-red-600">*</span></label>
-            <select
-              name="diocese"
-              value={formData.diocese}
-              onChange={handleChange}
-              disabled={!formData.country}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.diocese ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              {dioceses.map(diocese => (
-                <option key={diocese} value={diocese}>{diocese}</option>
-              ))}
-            </select>
-            {erreurs.diocese && <p className="text-red-600 text-sm mt-1">{erreurs.diocese}</p>}
-          </div>
-
-          {/* Paroisse */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Paroisse <span className="text-red-600">*</span></label>
-            <select
-              name="parish"
-              value={formData.parish}
-              onChange={handleChange}
-              disabled={!formData.diocese}
-              className={`w-full mt-1 p-2 rounded-xl border ${erreurs.parish ? 'border-red-500' : 'border-gray-300 focus:ring-blue-500'} transition focus:outline-none`}
-            >
-              <option value="">Sélectionner</option>
-              {parishes.map((parish: string) => (
-                <option key={parish} value={parish}>{parish}</option>
-              ))}
-            </select>
-            {erreurs.parish && <p className="text-red-600 text-sm mt-1">{erreurs.parish}</p>}
-          </div>
-
-          {/* Contact avec code pays */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">
-              Numéro WhatsApp <span className="text-red-600">*</span>
-            </label>
-            <div className="flex mt-1">
-              <input
-                type="text"
-                value={formData.country ? countryCodes[formData.country] : ""}
-                readOnly
-                className="w-20 p-2 rounded-l-xl border border-gray-300 bg-gray-100 text-gray-600"
-              />
-              <input
-                type="text"
-                name="numero"
-                value={formData.numero}
-                onChange={handleChange}
-                placeholder="Ex: 12345678"
-                className={`flex-1 p-2 rounded-r-xl border border-gray-300 focus:ring-blue-500 transition focus:outline-none ${
-                  erreurs.numero ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-            </div>
-            {erreurs.numero && <p className="text-red-600 text-sm mt-1">{erreurs.numero}</p>}
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 dark:text-white">Email (optionnel)</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full mt-1 p-2 rounded-xl border border-gray-300 focus:ring-blue-500 transition focus:outline-none"
-            />
-          </div>
-
-          {/* Bouton ou matricule */}
-          <div className="sm:col-span-2">
-            {matricule ? (
-              <>
-                <p className="text-center text-green-600 dark:text-green-400 font-semibold text-lg">
-                  Votre numéro matricule : <span className="font-bold">{matricule}</span>
-                </p>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  type="button"
-                  onClick={() => navigate('/login')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold shadow-md transition duration-300 mt-4"
-                >
-                  Aller à la connexion
-                </motion.button>
-              </>
-            ) : (
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                type="submit"
-                disabled={loadingForm}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold shadow-md transition duration-300 disabled:opacity-50"
-              >
-                {loadingForm ? 'Enregistrement...' : "Valider l'inscription"}
-              </motion.button>
-            )}
-          </div>
-        </form>
-      </motion.div>
+  const SectionTitle = ({
+    number,
+    title,
+    description,
+  }: {
+    number: string;
+    title: string;
+    description: string;
+  }) => (
+    <div className="mb-6 flex items-start gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+        {number}
+      </div>
+      <div>
+        <h2 className="font-bold text-gray-900 dark:text-white">{title}</h2>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {description}
+        </p>
+      </div>
     </div>
   );
-};
 
-export default Inscription;
+  const FieldError = ({ name }: { name: string }) =>
+    errors[name] ? (
+      <p className="mt-1.5 text-xs text-red-600">{errors[name]}</p>
+    ) : null;
+
+  if (matricule) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 dark:bg-gray-950">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-lg rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl dark:border-gray-800 dark:bg-gray-900 sm:p-10"
+        >
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl dark:bg-green-900/30">
+            ✓
+          </div>
+
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-green-700 dark:text-green-400">
+            Inscription enregistrée
+          </p>
+
+          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+            Bienvenue dans la confrérie
+          </h1>
+
+          <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-gray-600 dark:text-gray-300">
+            {confirmationMessage}
+          </p>
+
+          <div className="mt-7 rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/50 dark:bg-blue-950/30">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+              Votre matricule
+            </p>
+            <p className="mt-2 break-all text-xl font-extrabold tracking-wider text-blue-900 dark:text-blue-100">
+              {matricule}
+            </p>
+            <p className="mt-3 text-xs text-blue-700 dark:text-blue-300">
+              Conservez précieusement ce matricule. Il vous sera demandé pour
+              vous connecter après validation de votre inscription.
+            </p>
+          </div>
+
+          <div className="mt-6 rounded-xl bg-amber-50 p-4 text-left text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            <strong>À retenir :</strong> votre compte doit être validé par un
+            administrateur avant votre première connexion.
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/login")}
+            className="mt-7 w-full rounded-xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-blue-800"
+          >
+            Retour à la connexion
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 px-4 py-8 dark:bg-gray-950 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div className="bg-gradient-to-r from-blue-950 via-blue-800 to-blue-700 px-6 py-9 text-white sm:px-10">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-blue-200">
+                Confrérie Saint Enfant Jésus
+              </p>
+              <h1 className="text-2xl font-extrabold sm:text-3xl">
+                Formulaire d'inscription
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-blue-100">
+                Renseignez soigneusement les informations suivantes pour
+                rejoindre la confrérie.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-9 p-5 sm:p-9">
+            {errors.general && (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+              >
+                {errors.general}
+              </div>
+            )}
+
+            <section>
+              <SectionTitle
+                number="01"
+                title="Identité personnelle"
+                description="Les informations permettant de vous identifier."
+              />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Nom *</label>
+                  <input
+                    name="nom"
+                    value={formData.nom}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="Votre nom"
+                    autoComplete="family-name"
+                  />
+                  <FieldError name="nom" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Prénom(s) *</label>
+                  <input
+                    name="prenom"
+                    value={formData.prenom}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="Votre prénom"
+                    autoComplete="given-name"
+                  />
+                  <FieldError name="prenom" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Sexe *</label>
+                  <select
+                    name="sexe"
+                    value={formData.sexe}
+                    onChange={handleChange}
+                    className={inputClass}
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="Homme">Homme</option>
+                    <option value="Femme">Femme</option>
+                  </select>
+                  <FieldError name="sexe" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Date d'intégration *</label>
+                  <input
+                    type="date"
+                    name="dateIntegration"
+                    value={formData.dateIntegration}
+                    onChange={handleChange}
+                    max={new Date().toISOString().split("T")[0]}
+                    className={inputClass}
+                  />
+                  <FieldError name="dateIntegration" />
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-gray-100 pt-8 dark:border-gray-800">
+              <SectionTitle
+                number="02"
+                title="Situation professionnelle"
+                description="Votre activité actuelle."
+              />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Profession *</label>
+                  <select
+                    name="profession"
+                    value={formData.profession}
+                    onChange={handleChange}
+                    className={inputClass}
+                  >
+                    <option value="">Sélectionner une profession</option>
+                    <option value="Étudiant">Étudiant</option>
+                    <option value="Enseignant">Enseignant</option>
+                    <option value="Médecin">Médecin</option>
+                    <option value="Ingénieur">Ingénieur</option>
+                    <option value="Commerçant">Commerçant</option>
+                    <option value="Artisan">Artisan</option>
+                    <option value="Fonctionnaire">Fonctionnaire</option>
+                    <option value="Sans emploi">Sans emploi</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                  <FieldError name="profession" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Statut dans la confrérie</label>
+                  <input
+                    value="Membre"
+                    readOnly
+                    className={`${inputClass} cursor-not-allowed bg-gray-100 dark:bg-gray-800`}
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    Le statut de membre est attribué automatiquement.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-gray-100 pt-8 dark:border-gray-800">
+              <SectionTitle
+                number="03"
+                title="Localisation ecclésiastique"
+                description="Indiquez votre implantation géographique."
+              />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Continent *</label>
+                  <select
+                    name="continent"
+                    value={formData.continent}
+                    onChange={handleChange}
+                    className={inputClass}
+                  >
+                    <option value="">Sélectionner un continent</option>
+                    {continents
+                      .filter((item) => item.countries.length > 0)
+                      .map((item) => (
+                        <option key={item.name} value={item.name}>
+                          {item.label}
+                        </option>
+                      ))}
+                  </select>
+                  <FieldError name="continent" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Pays *</label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    disabled={!selectedContinent}
+                    className={inputClass}
+                  >
+                    <option value="">Sélectionner un pays</option>
+                    {selectedContinent?.countries.map((country) => (
+                      <option key={country.name} value={country.name}>
+                        {country.label}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError name="country" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Diocèse *</label>
+                  <select
+                    name="diocese"
+                    value={formData.diocese}
+                    onChange={handleChange}
+                    disabled={!selectedCountry}
+                    className={inputClass}
+                  >
+                    <option value="">Sélectionner un diocèse</option>
+                    {dioceses.map((diocese) => (
+                      <option key={diocese.name} value={diocese.name}>
+                        {diocese.name}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError name="diocese" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Paroisse *</label>
+                  <select
+                    name="parish"
+                    value={formData.parish}
+                    onChange={handleChange}
+                    disabled={!selectedDiocese}
+                    className={inputClass}
+                  >
+                    <option value="">Sélectionner une paroisse</option>
+                    {parishes.map((parish) => (
+                      <option key={parish} value={parish}>
+                        {parish}
+                      </option>
+                    ))}
+                  </select>
+                  <FieldError name="parish" />
+                </div>
+              </div>
+            </section>
+
+            <section className="border-t border-gray-100 pt-8 dark:border-gray-800">
+              <SectionTitle
+                number="04"
+                title="Coordonnées et photographie"
+                description="Vos informations de contact et votre photo de profil."
+              />
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Téléphone / WhatsApp *</label>
+                  <div className="flex">
+                    <div className="flex min-w-[76px] items-center justify-center rounded-l-xl border border-r-0 border-gray-200 bg-gray-100 px-3 text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                      {indicatif}
+                    </div>
+                    <input
+                      type="tel"
+                      name="numero"
+                      value={formData.numero}
+                      onChange={handleChange}
+                      className={`${inputClass} rounded-l-none`}
+                      placeholder="Votre numéro"
+                      autoComplete="tel-national"
+                    />
+                  </div>
+                  <FieldError name="numero" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>
+                    Adresse électronique (facultatif)
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="exemple@email.com"
+                    autoComplete="email"
+                  />
+                  <FieldError name="email" />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Photographie *</label>
+
+                  <div className="flex flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-950 sm:flex-row">
+                    <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white text-4xl dark:border-gray-700 dark:bg-gray-900">
+                      {photoPreview ? (
+                        <img
+                          src={photoPreview}
+                          alt="Aperçu de la photographie"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span>👤</span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 text-center sm:text-left">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                        Ajouter une photographie
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        Choisissez une photo nette permettant de vous
+                        reconnaître. Formats JPG, PNG ou WebP — 5 Mo maximum.
+                      </p>
+
+                      <label className="mt-4 inline-flex cursor-pointer items-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-300 dark:hover:bg-gray-800">
+                        {photo ? "Changer la photographie" : "Choisir une photo"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {photo && (
+                        <p className="mt-2 break-all text-xs text-green-700 dark:text-green-400">
+                          {photo.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <FieldError name="photo" />
+                </div>
+              </div>
+            </section>
+
+            <div className="border-t border-gray-100 pt-7 dark:border-gray-800">
+              <p className="mb-5 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                Les champs marqués d'un astérisque (*) sont obligatoires.
+                Après l'envoi, votre inscription sera soumise à la validation
+                d'un administrateur.
+              </p>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-700 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-blue-900/10 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Enregistrement en cours...
+                  </>
+                ) : (
+                  "Soumettre mon inscription"
+                )}
+              </button>
+
+              <p className="mt-5 text-center text-sm text-gray-600 dark:text-gray-400">
+                Vous avez déjà un compte ?{" "}
+                <Link
+                  to="/login"
+                  className="font-bold text-blue-700 hover:underline dark:text-blue-400"
+                >
+                  Se connecter
+                </Link>
+              </p>
+            </div>
+          </form>
+        </motion.div>
+
+        <p className="mt-6 text-center text-xs text-gray-400">
+          Confrérie Saint Enfant Jésus — Miraculeux de Prague
+        </p>
+      </div>
+    </div>
+  );
+}

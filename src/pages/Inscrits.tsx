@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "@/utils/axios";
+import UserAvatar from "@/components/UserAvatar";
 
 type Inscrit = {
   id: number;
   nom: string;
   prenom: string;
+  photo_url?: string | null;
   matricule?: string | null;
   sexe?: string | null;
   statut?: string | null;
@@ -28,6 +30,7 @@ type Responsable = {
   user_id: number;
   nom: string;
   prenom: string;
+  photo_url?: string | null;
   matricule?: string | null;
   statut?: string | null;
   level: string;
@@ -35,31 +38,118 @@ type Responsable = {
   is_primary: boolean;
 };
 
-const formatDate = (value?: string | null) => {
+const PAGE_SIZE = 12;
+
+const formatDate = (value?: string | null): string => {
   if (!value) return "Non renseignée";
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) return value;
 
-  return date.toLocaleDateString("fr-FR");
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  const responseError = error as {
+    response?: {
+      data?: {
+        detail?: unknown;
+      };
+    };
+  };
+
+  const detail = responseError?.response?.data?.detail;
+
+  return typeof detail === "string" && detail.trim()
+    ? detail
+    : fallback;
 };
 
 const Info = ({
   label,
-  value
+  value,
 }: {
   label: string;
   value?: string | null;
 }) => (
-  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 py-2 border-b border-gray-100 dark:border-gray-700">
+  <div className="flex flex-col gap-1 border-b border-gray-100 py-2.5 dark:border-gray-700 sm:flex-row sm:items-start sm:justify-between">
     <span className="text-sm text-gray-500 dark:text-gray-400">
       {label}
     </span>
 
-    <span className="text-sm font-medium break-words sm:text-right">
+    <span className="break-words text-sm font-medium text-gray-800 dark:text-gray-100 sm:max-w-[60%] sm:text-right">
       {value || "Non renseigné"}
     </span>
+  </div>
+);
+
+const StatCard = ({
+  label,
+  value,
+  icon,
+  description,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  description: string;
+}) => (
+  <div className="rounded-2xl border border-white/30 bg-white/90 p-5 shadow-lg backdrop-blur-sm dark:border-gray-700 dark:bg-gray-800/90">
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+          {label}
+        </p>
+
+        <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+          {value}
+        </p>
+      </div>
+
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl dark:bg-blue-900/50">
+        {icon}
+      </div>
+    </div>
+
+    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+      {description}
+    </p>
+  </div>
+);
+
+const SectionTitle = ({
+  icon,
+  title,
+  description,
+  count,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  count?: number;
+}) => (
+  <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">
+        <span>{icon}</span>
+        {title}
+      </h2>
+
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        {description}
+      </p>
+    </div>
+
+    {count !== undefined && (
+      <span className="w-fit rounded-full bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+        {count} {count > 1 ? "éléments" : "élément"}
+      </span>
+    )}
   </div>
 );
 
@@ -74,9 +164,17 @@ const Inscrits: React.FC = () => {
   const [responsables, setResponsables] = useState<Responsable[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [membresError, setMembresError] = useState("");
   const [responsablesError, setResponsablesError] = useState("");
 
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Chargement des membres et responsables.
   useEffect(() => {
     let cancelled = false;
 
@@ -88,27 +186,31 @@ const Inscrits: React.FC = () => {
         setMembresError(
           "Les informations de localisation sont incomplètes."
         );
+
         setResponsablesError(
           "Les informations de localisation sont incomplètes."
         );
 
         setLoading(false);
+        setRefreshing(false);
         return;
       }
 
-      setLoading(true);
+      const isInitialLoad = inscrits.length === 0 && responsables.length === 0;
+
+      if (isInitialLoad) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
 
       setMembresError("");
       setResponsablesError("");
-
-      setInscrits([]);
-      setResponsables([]);
 
       const paysUrl = encodeURIComponent(country);
       const dioceseUrl = encodeURIComponent(diocese);
       const paroisseUrl = encodeURIComponent(paroisse);
 
-      // Chargement indépendant des membres.
       const chargerMembres = async () => {
         try {
           const response = await api.get<Inscrit[]>(
@@ -120,19 +222,20 @@ const Inscrits: React.FC = () => {
               Array.isArray(response.data) ? response.data : []
             );
           }
-        } catch (err: any) {
-          console.error("Erreur chargement membres :", err);
+        } catch (error: unknown) {
+          console.error("Erreur chargement membres :", error);
 
           if (!cancelled) {
             setMembresError(
-              err.response?.data?.detail ||
-              "Impossible de charger les membres."
+              getErrorMessage(
+                error,
+                "Impossible de charger les membres de cette paroisse."
+              )
             );
           }
         }
       };
 
-      // Chargement indépendant des responsables.
       const chargerResponsables = async () => {
         try {
           const response = await api.get<Responsable[]>(
@@ -140,17 +243,25 @@ const Inscrits: React.FC = () => {
           );
 
           if (!cancelled) {
+            const data = Array.isArray(response.data)
+              ? response.data
+              : [];
+
             setResponsables(
-              Array.isArray(response.data) ? response.data : []
+              [...data].sort(
+                (a, b) => Number(b.is_primary) - Number(a.is_primary)
+              )
             );
           }
-        } catch (err: any) {
-          console.error("Erreur chargement responsables :", err);
+        } catch (error: unknown) {
+          console.error("Erreur chargement responsables :", error);
 
           if (!cancelled) {
             setResponsablesError(
-              err.response?.data?.detail ||
-              "Impossible de charger les responsables."
+              getErrorMessage(
+                error,
+                "Impossible de charger les responsables paroissiaux."
+              )
             );
           }
         }
@@ -158,12 +269,13 @@ const Inscrits: React.FC = () => {
 
       try {
         await Promise.allSettled([
+          chargerMembres(),
           chargerResponsables(),
-          chargerMembres()
         ]);
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setRefreshing(false);
         }
       }
     };
@@ -173,88 +285,223 @@ const Inscrits: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [country, diocese, paroisse]);
+  }, [country, diocese, paroisse, reloadKey]);
+
+  // Recherche des membres.
+  const filteredInscrits = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase("fr");
+
+    if (!normalizedSearch) return inscrits;
+
+    return inscrits.filter((inscrit) => {
+      const searchableText = [
+        inscrit.nom,
+        inscrit.prenom,
+        inscrit.matricule,
+        inscrit.profession,
+        inscrit.statut,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("fr");
+
+      return searchableText.includes(normalizedSearch);
+    });
+  }, [inscrits, search]);
+
+  // Pagination.
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredInscrits.length / PAGE_SIZE)
+  );
+
+  const safePage = Math.min(currentPage, totalPages);
+
+  const paginatedInscrits = useMemo(() => {
+    const startIndex = (safePage - 1) * PAGE_SIZE;
+
+    return filteredInscrits.slice(
+      startIndex,
+      startIndex + PAGE_SIZE
+    );
+  }, [filteredInscrits, safePage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const handleRefresh = () => {
+    setReloadKey((previous) => previous + 1);
+  };
+
+  // Informations privées présentes dans la réponse du backend.
+  const hasPrivateData = (inscrit: Inscrit) =>
+    inscrit.email !== undefined ||
+    inscrit.numero_whatsapp !== undefined ||
+    inscrit.is_verified !== undefined ||
+    inscrit.is_active !== undefined ||
+    inscrit.is_blocked !== undefined;
 
   if (loading) {
     return (
-      <div className="text-center py-10">
-        ⏳ Chargement des données...
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" />
+
+        <p className="mt-5 text-lg font-semibold text-gray-800 dark:text-white">
+          Chargement de la vie paroissiale...
+        </p>
+
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Récupération des membres et des responsables.
+        </p>
       </div>
     );
   }
 
   return (
     <motion.div
-      className="min-h-screen flex flex-col items-center px-4 py-10 text-gray-900 dark:text-white"
-      initial={{ opacity: 0, y: 30 }}
+      className="mx-auto flex w-full max-w-7xl flex-col px-4 py-8 text-gray-900 dark:text-white sm:px-6 lg:px-8"
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -30 }}
-      transition={{ duration: 0.5 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
     >
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-center">
-        👥 Vie paroissiale
-      </h1>
+      {/* EN-TÊTE */}
 
-      <p className="text-center mb-10 text-gray-600 dark:text-gray-300">
-        {country} — {diocese} — {paroisse}
-      </p>
+      <section className="mb-8 overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-r from-blue-950/95 via-blue-900/90 to-indigo-950/95 p-6 text-white shadow-xl sm:p-9">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider">
+              <span>⛪</span>
+              Espace paroissial
+            </div>
+
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Vie paroissiale
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-blue-100 sm:text-base">
+              Retrouvez les responsables et les membres enregistrés
+              au sein de cette paroisse.
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-blue-100">
+              <span>🌍 {country}</span>
+              <span className="hidden sm:inline">›</span>
+              <span>Diocèse de {diocese}</span>
+              <span className="hidden sm:inline">›</span>
+              <span className="font-semibold text-white">{paroisse}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span className={refreshing ? "animate-spin" : ""}>
+              🔄
+            </span>
+
+            {refreshing ? "Actualisation..." : "Actualiser"}
+          </button>
+        </div>
+      </section>
+
+      {/* STATISTIQUES */}
+
+      <section className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard
+          label="Membres enregistrés"
+          value={inscrits.length}
+          icon="👥"
+          description="Membres retournés par le service paroissial."
+        />
+
+        <StatCard
+          label="Responsables paroissiaux"
+          value={responsables.length}
+          icon="⛪"
+          description="Responsables associés à cette paroisse."
+        />
+      </section>
 
       {/* RESPONSABLES */}
 
-      <section className="w-full max-w-4xl mb-12">
-        <h2 className="text-xl sm:text-2xl font-bold text-center mb-6">
-          ⛪ Responsables de la paroisse
-        </h2>
+      <section className="mb-12">
+        <SectionTitle
+          icon="⛪"
+          title="Responsables de la paroisse"
+          description="Découvrez les personnes chargées de la responsabilité paroissiale."
+          count={responsables.length}
+        />
 
-        {responsablesError && (
-          <p className="text-red-600 text-center mb-4">
-            {responsablesError}
-          </p>
-        )}
+        {responsablesError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-center dark:border-red-900 dark:bg-red-950/40">
+            <p className="font-medium text-red-700 dark:text-red-300">
+              ⚠️ {responsablesError}
+            </p>
 
-        {!responsablesError && responsables.length === 0 && (
-          <p className="text-center text-gray-500 dark:text-gray-400">
-            Aucun responsable paroissial enregistré.
-          </p>
-        )}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="mt-3 rounded-lg bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : responsables.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-5 py-10 text-center dark:border-gray-700 dark:bg-gray-800/80">
+            <div className="text-4xl">⛪</div>
 
-        {responsables.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {responsables.map((responsable) => (
-              <motion.div
+            <p className="mt-3 font-semibold text-gray-700 dark:text-gray-200">
+              Aucun responsable enregistré
+            </p>
+
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Les responsables de cette paroisse apparaîtront ici.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            {responsables.map((responsable, index) => (
+              <motion.article
                 key={responsable.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-5"
-                initial={{ opacity: 0, y: 10 }}
+                className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white/95 p-5 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800/95"
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.06 }}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-2xl">
-                    👤
+                {responsable.is_primary && (
+                  <div className="absolute right-0 top-0 rounded-bl-xl bg-green-600 px-3 py-1.5 text-xs font-bold text-white">
+                    ★ Premier responsable
                   </div>
+                )}
 
-                  <div>
-                    <p className="font-bold">
+                <div className="flex items-center gap-4 pt-3">
+                  <UserAvatar
+                    photoUrl={responsable.photo_url}
+                    name={`${responsable.prenom} ${responsable.nom}`}
+                  />
+
+                  <div className="min-w-0">
+                    <h3 className="break-words text-lg font-bold text-gray-900 dark:text-white">
                       {responsable.prenom} {responsable.nom}
-                    </p>
+                    </h3>
 
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">
                       {responsable.role_name}
                     </p>
 
                     {responsable.matricule && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         Matricule : {responsable.matricule}
                       </p>
                     )}
                   </div>
                 </div>
-
-                {responsable.is_primary && (
-                  <span className="inline-block mt-3 text-xs font-semibold px-3 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Premier responsable
-                  </span>
-                )}
-              </motion.div>
+              </motion.article>
             ))}
           </div>
         )}
@@ -262,115 +509,266 @@ const Inscrits: React.FC = () => {
 
       {/* MEMBRES */}
 
-      <section className="w-full max-w-4xl">
-        <h2 className="text-xl sm:text-2xl font-bold text-center mb-6">
-          👥 Membres de la paroisse
-        </h2>
+      <section>
+        <SectionTitle
+          icon="👥"
+          title="Membres de la paroisse"
+          description="Consultez les profils des membres enregistrés."
+          count={inscrits.length}
+        />
 
-        {membresError && (
-          <p className="text-red-600 text-center mb-4">
-            {membresError}
-          </p>
-        )}
-
-        {!membresError && (
-          <>
-            <p className="mb-6 text-center font-semibold">
-              Nombre de membres : {inscrits.length}
+        {membresError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-center dark:border-red-900 dark:bg-red-950/40">
+            <p className="font-medium text-red-700 dark:text-red-300">
+              ⚠️ {membresError}
             </p>
 
-            {inscrits.length === 0 ? (
-              <p className="text-center text-gray-500 dark:text-gray-400">
-                Aucun autre membre validé pour cette paroisse.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {inscrits.map((inscrit) => (
-                  <motion.article
-                    key={inscrit.id}
-                    className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-5"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="mt-3 rounded-lg bg-red-100 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-200"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* RECHERCHE */}
+
+            <div className="mb-6 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-md dark:border-gray-700 dark:bg-gray-800/90">
+              <label
+                htmlFor="recherche-membre"
+                className="mb-2 block text-sm font-semibold text-gray-700 dark:text-gray-200"
+              >
+                🔎 Rechercher un membre
+              </label>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  id="recherche-membre"
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Nom, prénom, matricule, profession..."
+                  className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:ring-blue-900"
+                />
+
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="rounded-xl bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                   >
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-2xl">
-                        👤
-                      </div>
+                    Effacer
+                  </button>
+                )}
+              </div>
 
-                      <div>
-                        <h3 className="font-bold text-lg">
-                          {inscrit.prenom} {inscrit.nom}
-                        </h3>
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                {filteredInscrits.length} résultat(s) correspondant à
+                votre recherche.
+              </p>
+            </div>
 
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {inscrit.matricule || "Matricule non attribué"}
-                        </p>
-                      </div>
-                    </div>
+            {inscrits.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-5 py-12 text-center dark:border-gray-700 dark:bg-gray-800/80">
+                <div className="text-5xl">👥</div>
 
-                    <div className="space-y-1">
-                      <Info label="Sexe" value={inscrit.sexe} />
+                <p className="mt-4 font-semibold text-gray-700 dark:text-gray-200">
+                  Aucun membre enregistré
+                </p>
 
-                      <Info label="Statut" value={inscrit.statut} />
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  Aucun membre n'est actuellement retourné pour cette
+                  paroisse.
+                </p>
+              </div>
+            ) : filteredInscrits.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-5 py-12 text-center dark:border-gray-700 dark:bg-gray-800/80">
+                <div className="text-4xl">🔍</div>
 
-                      <Info label="Profession" value={inscrit.profession} />
+                <p className="mt-3 font-semibold text-gray-700 dark:text-gray-200">
+                  Aucun résultat trouvé
+                </p>
 
-                      <Info
-                        label="Date d'intégration"
-                        value={formatDate(inscrit.date_integration)}
-                      />
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Essayez un autre nom ou matricule.
+                </p>
 
-                      <Info label="Pays" value={inscrit.pays} />
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="mt-4 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                >
+                  Réinitialiser la recherche
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* CARTES DES MEMBRES */}
 
-                      <Info label="Diocèse" value={inscrit.diocese} />
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {paginatedInscrits.map((inscrit, index) => (
+                    <motion.article
+                      key={inscrit.id}
+                      className="overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800/95"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.035 }}
+                    >
+                      <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 dark:border-gray-700 dark:from-gray-800 dark:to-gray-900">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar
+                            photoUrl={inscrit.photo_url}
+                            name={`${inscrit.prenom} ${inscrit.nom}`}
+                          />
 
-                      <Info label="Paroisse" value={inscrit.paroisse} />
+                          <div className="min-w-0 flex-1">
+                            <h3 className="break-words text-lg font-bold text-gray-900 dark:text-white">
+                              {inscrit.prenom} {inscrit.nom}
+                            </h3>
 
-                      <Info
-                        label="Date d'inscription"
-                        value={formatDate(inscrit.date_inscription)}
-                      />
-
-                      {/* Informations privées uniquement si le backend les autorise. */}
-                      {inscrit.email !== undefined && (
-                        <>
-                          <div className="pt-3 mt-3 border-t border-blue-200 dark:border-blue-800">
-                            <p className="text-sm font-bold text-blue-700 dark:text-blue-300 mb-2">
-                              🔐 Informations réservées aux responsables
+                            <p className="mt-1 break-all text-xs text-gray-500 dark:text-gray-400">
+                              {inscrit.matricule ||
+                                "Matricule non attribué"}
                             </p>
                           </div>
+                        </div>
 
-                          <Info label="Email" value={inscrit.email} />
+                        {inscrit.statut && (
+                          <div className="mt-4">
+                            <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                              {inscrit.statut}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-5">
+                        <div className="space-y-0">
+                          <Info label="Sexe" value={inscrit.sexe} />
 
                           <Info
-                            label="WhatsApp"
-                            value={inscrit.numero_whatsapp}
+                            label="Profession"
+                            value={inscrit.profession}
                           />
 
                           <Info
-                            label="Compte vérifié"
-                            value={inscrit.is_verified ? "Oui" : "Non"}
+                            label="Date d'intégration"
+                            value={formatDate(inscrit.date_integration)}
                           />
 
-                          <Info
-                            label="Compte actif"
-                            value={inscrit.is_active ? "Oui" : "Non"}
-                          />
+                          <Info label="Pays" value={inscrit.pays} />
+
+                          <Info label="Diocèse" value={inscrit.diocese} />
+
+                          <Info label="Paroisse" value={inscrit.paroisse} />
 
                           <Info
-                            label="Compte bloqué"
-                            value={inscrit.is_blocked ? "Oui" : "Non"}
+                            label="Date d'inscription"
+                            value={formatDate(inscrit.date_inscription)}
                           />
-                        </>
-                      )}
+                        </div>
+
+                        {/* INFORMATIONS PRIVÉES AUTORISÉES */}
+
+                        {hasPrivateData(inscrit) && (
+                          <div className="mt-5 border-t border-blue-200 pt-4 dark:border-blue-900">
+                            <p className="mb-3 flex items-center gap-2 text-sm font-bold text-blue-700 dark:text-blue-300">
+                              🔐 Informations réservées
+                            </p>
+
+                            <Info
+                              label="Email"
+                              value={inscrit.email}
+                            />
+
+                            <Info
+                              label="WhatsApp"
+                              value={inscrit.numero_whatsapp}
+                            />
+
+                            {inscrit.is_verified !== undefined && (
+                              <Info
+                                label="Compte vérifié"
+                                value={inscrit.is_verified ? "Oui" : "Non"}
+                              />
+                            )}
+
+                            {inscrit.is_active !== undefined && (
+                              <Info
+                                label="Compte actif"
+                                value={inscrit.is_active ? "Oui" : "Non"}
+                              />
+                            )}
+
+                            {inscrit.is_blocked !== undefined && (
+                              <Info
+                                label="Compte bloqué"
+                                value={inscrit.is_blocked ? "Oui" : "Non"}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.article>
+                  ))}
+                </div>
+
+                {/* PAGINATION */}
+
+                {totalPages > 1 && (
+                  <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-md dark:border-gray-700 dark:bg-gray-800/90 sm:flex-row">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Page {safePage} sur {totalPages}
+                      {" — "}
+                      {filteredInscrits.length} membres
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((page) => Math.max(1, page - 1))
+                        }
+                        disabled={safePage === 1}
+                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+                      >
+                        ← Précédent
+                      </button>
+
+                      <span className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white">
+                        {safePage}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((page) =>
+                            Math.min(totalPages, page + 1)
+                          )
+                        }
+                        disabled={safePage === totalPages}
+                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700"
+                      >
+                        Suivant →
+                      </button>
                     </div>
-                  </motion.article>
-                ))}
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
       </section>
+
+      {/* PIED DE PAGE DE LA PAGE */}
+
+      <div className="mt-12 border-t border-gray-200 pt-6 text-center dark:border-gray-700">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          SAINT ENFANT JÉSUS — Espace de vie paroissiale
+        </p>
+      </div>
     </motion.div>
   );
 };

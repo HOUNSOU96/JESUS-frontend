@@ -1,7 +1,20 @@
 export type User = {
-  id: string;
-  email: string;
+  id: string | number;
+  email?: string | null;
   nom: string;
   prenom: string;
-  // Ajoute d'autres champs ici si ton `/auth/me` en renvoie
+  matricule?: string | null;
+  numero_whatsapp?: string | null;
+  date_integration?: string | null;
+  continent?: string | null;
+  pays?: string | null;
+  ville?: string | null;
+  diocese?: string | null;
+  paroisse?: string | null;
+  is_admin?: boolean | number;
+  is_active?: boolean | number;
+  is_validated?: boolean | number;
+  is_blocked?: boolean | number;
+  status?: string;
+  [key: string]: unknown;
 };
