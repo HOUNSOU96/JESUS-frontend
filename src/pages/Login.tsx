@@ -101,8 +101,12 @@ const Login: React.FC = () => {
             {/* EN-TÊTE */}
 
             <div className="text-center">
-              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-600 text-4xl text-white shadow-lg shadow-blue-600/25">
-                ✝
+              <div className="mx-auto mb-5 h-20 w-20 overflow-hidden rounded-3xl shadow-lg shadow-blue-600/25">
+                <img
+                  src="/jesus.jpeg"
+                  alt="Saint Enfant Jésus"
+                  className="h-full w-full object-cover"
+                />
               </div>
 
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-blue-600 dark:text-blue-400">

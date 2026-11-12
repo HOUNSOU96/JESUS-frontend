@@ -183,7 +183,7 @@ const MaCarte: React.FC = () => {
             <Field label="Matricule" value={user?.matricule} />
             <Field label="Téléphone" value={user?.numero_whatsapp} />
             <Field label="Adresse e-mail" value={user?.email} />
-            <Field label="Date d'intégration" value={date(user?.date_integration)} />
+            <Field label="Date d'intégration" value={date(user?.date_integration ?? undefined)} />
             <Field label="Continent" value={user?.continent} />
             <Field label="Pays" value={user?.pays} />
             <Field label="Diocèse" value={user?.diocese} />

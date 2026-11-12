@@ -17,7 +17,20 @@ interface NationalResponsible {
   role_name: string;
   country?: string | null;
   is_primary: boolean;
+  effective_from?: string | null;
+  ended_at?: string | null;
 }
+
+const formatResponsibilityDate = (value?: string | null): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
 
 const Pays: React.FC = () => {
   const { country } = useParams<{ country: string }>();
@@ -304,6 +317,18 @@ const Pays: React.FC = () => {
                       <p className="mt-1 text-sm font-semibold text-blue-300">
                         {responsable.role_name}
                       </p>
+
+                      {responsable.effective_from && (
+                        <p className="mt-1 text-xs text-gray-300">
+                          Prise d’effet : {formatResponsibilityDate(responsable.effective_from)}
+                        </p>
+                      )}
+
+                      {responsable.ended_at && (
+                        <p className="mt-1 text-xs text-amber-300">
+                          Fin de responsabilité : {formatResponsibilityDate(responsable.ended_at)}
+                        </p>
+                      )}
 
                       {responsable.matricule && (
                         <p className="mt-1 text-xs text-gray-300">

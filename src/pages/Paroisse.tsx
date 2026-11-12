@@ -20,7 +20,20 @@ interface DiocesanResponsible {
   parish: string | null;
   is_primary: boolean;
   is_active?: boolean;
+  effective_from?: string | null;
+  ended_at?: string | null;
 }
+
+const formatResponsibilityDate = (value?: string | null): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
 
 const Paroisse: React.FC = () => {
   const { country, diocese } = useParams<{
@@ -225,6 +238,18 @@ const Paroisse: React.FC = () => {
         <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
           {responsable.role_name}
         </p>
+
+        {responsable.effective_from && (
+          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+            Prise d’effet : {formatResponsibilityDate(responsable.effective_from)}
+          </p>
+        )}
+
+        {responsable.ended_at && (
+          <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+            Fin de responsabilité : {formatResponsibilityDate(responsable.ended_at)}
+          </p>
+        )}
 
         {responsable.is_primary && (
           <span className="inline-flex mt-2 items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/40 px-3 py-1 text-xs font-semibold text-green-800 dark:text-green-300">

@@ -36,6 +36,8 @@ type Responsable = {
   level: string;
   role_name: string;
   is_primary: boolean;
+  effective_from?: string | null;
+  ended_at?: string | null;
 };
 
 const PAGE_SIZE = 12;
@@ -493,6 +495,18 @@ const Inscrits: React.FC = () => {
                     <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">
                       {responsable.role_name}
                     </p>
+
+                    {responsable.effective_from && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Prise d’effet : {formatDate(responsable.effective_from)}
+                      </p>
+                    )}
+
+                    {responsable.ended_at && (
+                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                        Fin de responsabilité : {formatDate(responsable.ended_at)}
+                      </p>
+                    )}
 
                     {responsable.matricule && (
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

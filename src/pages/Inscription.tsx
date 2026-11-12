@@ -68,6 +68,38 @@ export default function Inscription() {
   const [matricule, setMatricule] = useState("");
   const [confirmationMessage, setConfirmationMessage] = useState("");
 
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 4;
+
+  const stepFields: Array<Array<keyof FormDataType>> = [
+    ["nom", "prenom", "sexe", "dateIntegration"],
+    ["profession"],
+    ["continent", "country", "diocese", "parish"],
+    ["numero"],
+  ];
+
+  const handleNextStep = () => {
+    const newErrors: Record<string, string> = {};
+
+    stepFields[currentStep - 1].forEach((field) => {
+      if (!String(formData[field]).trim()) {
+        newErrors[field] = "Ce champ est obligatoire.";
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) return;
+
+    setCurrentStep((previous) => Math.min(previous + 1, totalSteps));
+  };
+
+  const handlePreviousStep = () => {
+    setErrors({});
+    setCurrentStep((previous) => Math.max(previous - 1, 1));
+  };
+
+
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -340,6 +372,22 @@ export default function Inscription() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-9 p-5 sm:p-9">
+
+            <div>
+              <div className="mb-3 flex justify-between text-xs font-semibold text-gray-500">
+                <span>Étape {currentStep} sur {totalSteps}</span>
+                <span>{Math.round((currentStep / totalSteps) * 100)} %</span>
+              </div>
+
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                <motion.div
+                  className="h-full rounded-full bg-blue-700"
+                  animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+            </div>
+
             {errors.general && (
               <div
                 role="alert"
@@ -349,7 +397,8 @@ export default function Inscription() {
               </div>
             )}
 
-            <section>
+            {currentStep === 1 && (
+<section>
               <SectionTitle
                 number="01"
                 title="Identité personnelle"
@@ -412,8 +461,10 @@ export default function Inscription() {
                 </div>
               </div>
             </section>
+)}
 
-            <section className="border-t border-gray-100 pt-8 dark:border-gray-800">
+            {currentStep === 2 && (
+<section className="border-t border-gray-100 pt-8 dark:border-gray-800">
               <SectionTitle
                 number="02"
                 title="Situation professionnelle"
@@ -456,8 +507,10 @@ export default function Inscription() {
                 </div>
               </div>
             </section>
+)}
 
-            <section className="border-t border-gray-100 pt-8 dark:border-gray-800">
+            {currentStep === 3 && (
+<section className="border-t border-gray-100 pt-8 dark:border-gray-800">
               <SectionTitle
                 number="03"
                 title="Localisation ecclésiastique"
@@ -543,8 +596,10 @@ export default function Inscription() {
                 </div>
               </div>
             </section>
+)}
 
-            <section className="border-t border-gray-100 pt-8 dark:border-gray-800">
+            {currentStep === 4 && (
+<section className="border-t border-gray-100 pt-8 dark:border-gray-800">
               <SectionTitle
                 number="04"
                 title="Coordonnées et photographie"
@@ -633,6 +688,8 @@ export default function Inscription() {
                 </div>
               </div>
             </section>
+)}
+
 
             <div className="border-t border-gray-100 pt-7 dark:border-gray-800">
               <p className="mb-5 text-xs leading-5 text-gray-500 dark:text-gray-400">
@@ -641,20 +698,35 @@ export default function Inscription() {
                 d'un administrateur.
               </p>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-xl bg-blue-700 px-6 py-4 text-sm font-bold text-white shadow-lg shadow-blue-900/10 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? (
-                  <>
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Enregistrement en cours...
-                  </>
-                ) : (
-                  "Soumettre mon inscription"
+              <div className="flex gap-3">
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={handlePreviousStep}
+                    className="flex-1 rounded-xl border border-gray-300 px-5 py-4 text-sm font-bold text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800"
+                  >
+                    Retour
+                  </button>
                 )}
-              </button>
+
+                {currentStep < totalSteps ? (
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 rounded-xl bg-blue-700 px-6 py-4 text-sm font-bold text-white shadow-lg transition hover:bg-blue-800"
+                  >
+                    Continuer →
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 rounded-xl bg-blue-700 px-6 py-4 text-sm font-bold text-white shadow-lg transition hover:bg-blue-800 disabled:opacity-60"
+                  >
+                    {loading ? "Enregistrement en cours..." : "Soumettre mon inscription"}
+                  </button>
+                )}
+              </div>
 
               <p className="mt-5 text-center text-sm text-gray-600 dark:text-gray-400">
                 Vous avez déjà un compte ?{" "}
@@ -666,6 +738,7 @@ export default function Inscription() {
                 </Link>
               </p>
             </div>
+
           </form>
         </motion.div>
 
