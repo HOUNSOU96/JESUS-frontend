@@ -43,6 +43,18 @@ interface ListeResponse {
   inscrits: UserInscrit[];
 }
 
+interface Responsabilite {
+  id: number;
+  user_id: number;
+  level: "national" | "diocesan" | "parish";
+  role_name: string;
+  country: string;
+  diocese?: string | null;
+  parish?: string | null;
+  is_primary: boolean;
+  effective_from?: string | null;
+}
+
 type StatusFilter = "all" | "pending" | "validated" | "refused";
 
 const PAGE_SIZE = 10;
@@ -147,6 +159,13 @@ const ListeInscrits: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const [responsabilites, setResponsabilites] = useState<
+    Record<number, Responsabilite[]>
+  >({});
+
+  const [responsabilitesLoading, setResponsabilitesLoading] =
+    useState(false);
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   // --------------------------------------------------
@@ -206,6 +225,284 @@ const ListeInscrits: React.FC = () => {
   useEffect(() => {
     chargerInscrits();
   }, [chargerInscrits]);
+
+
+  // --------------------------------------------------
+  // CHARGEMENT DES RESPONSABILITÉS
+  // --------------------------------------------------
+
+  const chargerResponsabilites = useCallback(async () => {
+    const membresValides = inscrits.filter(
+      (membre) =>
+        getStatus(membre) === "validated" &&
+        membre.pays
+    );
+
+    if (membresValides.length === 0) {
+      setResponsabilites({});
+      return;
+    }
+
+    setResponsabilitesLoading(true);
+
+    try {
+      const resultats: Record<number, Responsabilite[]> = {};
+
+      await Promise.all(
+        membresValides.map(async (membre) => {
+          const pays = encodeURIComponent(membre.pays!.trim());
+
+          const requetes: Promise<Responsabilite[]>[] = [
+            api.get<Responsabilite[]>(
+              `/api/hierarchy/responsables-national/${pays}`
+            ).then((response) =>
+              Array.isArray(response.data) ? response.data : []
+            ),
+          ];
+
+          if (membre.diocese?.trim()) {
+            const diocese = encodeURIComponent(membre.diocese.trim());
+
+            requetes.push(
+              api.get<Responsabilite[]>(
+                `/api/hierarchy/responsables/${pays}/${diocese}`
+              ).then((response) =>
+                Array.isArray(response.data) ? response.data : []
+              )
+            );
+          }
+
+          const groupes = await Promise.all(requetes);
+
+          resultats[membre.id] = groupes
+            .flat()
+            .filter((item) => item.user_id === membre.id);
+        })
+      );
+
+      setResponsabilites(resultats);
+    } catch (err) {
+      console.error(
+        "Erreur chargement des responsabilités :",
+        err
+      );
+    } finally {
+      setResponsabilitesLoading(false);
+    }
+  }, [inscrits]);
+
+  useEffect(() => {
+    if (user?.is_admin && inscrits.length > 0) {
+      chargerResponsabilites();
+    }
+  }, [user, inscrits, chargerResponsabilites]);
+
+  // --------------------------------------------------
+  // NOMINATION D'UN RESPONSABLE
+  // --------------------------------------------------
+
+  const handleNommerResponsable = async (membre: UserInscrit) => {
+    if (getStatus(membre) !== "validated") return;
+
+    if (!membre.pays?.trim()) {
+      setError("Le pays du membre n'est pas renseigné.");
+      return;
+    }
+
+    const niveaux = [
+      "national",
+      ...(membre.diocese?.trim() ? ["diocesan"] : []),
+      ...(membre.diocese?.trim() && membre.paroisse?.trim()
+        ? ["parish"]
+        : []),
+    ];
+
+    const niveau = window.prompt(
+      "Niveau de responsabilité :\n" +
+      niveaux.map((item, index) => `${index + 1}. ${
+        item === "national" ? "National" :
+        item === "diocesan" ? "Diocésain" : "Paroissial"
+      }`).join("\n") +
+      "\n\nSaisis le numéro correspondant."
+    );
+
+    if (niveau === null) return;
+
+    const index = Number(niveau) - 1;
+
+    if (!Number.isInteger(index) || index < 0 || index >= niveaux.length) {
+      setError("Niveau de responsabilité invalide.");
+      return;
+    }
+
+    const level = niveaux[index];
+
+    const roleName = window.prompt(
+      "Intitulé de la fonction à attribuer :",
+      level === "national"
+        ? "Responsable national"
+        : level === "diocesan"
+          ? "Responsable diocésain"
+          : "Responsable paroissial"
+    );
+
+    if (!roleName?.trim()) return;
+
+    const effectiveFrom = window.prompt(
+      "Date de prise de fonction (AAAA-MM-JJ).\n" +
+      "Laisse vide si elle n'est pas encore définie.",
+      new Date().toISOString().slice(0, 10)
+    );
+
+    if (effectiveFrom === null) return;
+
+    if (
+      effectiveFrom.trim() &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom.trim())
+    ) {
+      setError("La date doit respecter le format AAAA-MM-JJ.");
+      return;
+    }
+
+    const isPrimary = window.confirm(
+      "Cette personne sera-t-elle le premier responsable de cette fonction ?"
+    );
+
+    commencerTraitement(membre.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.post(
+        "/api/hierarchy/responsabilites/attribuer",
+        {
+          user_id: membre.id,
+          level,
+          role_name: roleName.trim(),
+          country: membre.pays.trim(),
+          diocese: level === "national" ? null : membre.diocese?.trim(),
+          parish: level === "parish" ? membre.paroisse?.trim() : null,
+          is_primary: isPrimary,
+          effective_from: effectiveFrom.trim() || null,
+        }
+      );
+
+      setSuccess(
+        response.data?.message ||
+        "Responsabilité attribuée avec succès."
+      );
+
+      await chargerResponsabilites();
+    } catch (err: any) {
+      console.error("Erreur nomination :", err);
+
+      setError(
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        "Impossible d'attribuer cette responsabilité."
+      );
+    } finally {
+      terminerTraitement(membre.id);
+    }
+  };
+
+  // --------------------------------------------------
+  // MODIFICATION D'UNE RESPONSABILITÉ
+  // --------------------------------------------------
+
+  const handleModifierResponsabilite = async (
+    membre: UserInscrit,
+    responsabilite: Responsabilite
+  ) => {
+    const roleName = window.prompt(
+      "Nouvel intitulé de la fonction :",
+      responsabilite.role_name
+    );
+
+    if (!roleName?.trim()) return;
+
+    const isPrimary = window.confirm(
+      "Cette personne doit-elle être le premier responsable ?"
+    );
+
+    if (!window.confirm("Confirmer la modification de cette responsabilité ?")) {
+      return;
+    }
+
+    commencerTraitement(membre.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.put(
+        `/api/hierarchy/responsabilites/${responsabilite.id}`,
+        {
+          role_name: roleName.trim(),
+          is_primary: isPrimary,
+          effective_from: responsabilite.effective_from || null,
+        }
+      );
+
+      setSuccess(
+        response.data?.message ||
+        "Responsabilité modifiée avec succès."
+      );
+
+      await chargerResponsabilites();
+    } catch (err: any) {
+      console.error("Erreur modification responsabilité :", err);
+
+      setError(
+        err?.response?.data?.detail ||
+        "Impossible de modifier cette responsabilité."
+      );
+    } finally {
+      terminerTraitement(membre.id);
+    }
+  };
+
+  // --------------------------------------------------
+  // RETRAIT D'UNE RESPONSABILITÉ
+  // --------------------------------------------------
+
+  const handleRetirerResponsabilite = async (
+    membre: UserInscrit,
+    responsabilite: Responsabilite
+  ) => {
+    const confirmation = window.confirm(
+      `Retirer la fonction « ${responsabilite.role_name} » de ` +
+      `${membre.prenom} ${membre.nom} ?\n\n` +
+      "La responsabilité sera désactivée, mais son historique sera conservé."
+    );
+
+    if (!confirmation) return;
+
+    commencerTraitement(membre.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.delete(
+        `/api/hierarchy/responsabilites/${responsabilite.id}`
+      );
+
+      setSuccess(
+        response.data?.message ||
+        "Responsabilité retirée. L'historique est conservé."
+      );
+
+      await chargerResponsabilites();
+    } catch (err: any) {
+      console.error("Erreur retrait responsabilité :", err);
+
+      setError(
+        err?.response?.data?.detail ||
+        "Impossible de retirer cette responsabilité."
+      );
+    } finally {
+      terminerTraitement(membre.id);
+    }
+  };
 
   // --------------------------------------------------
   // RECHERCHE ET FILTRES
@@ -840,6 +1137,110 @@ const ListeInscrits: React.FC = () => {
                     <div className="border-t border-green-100 bg-green-50 px-5 py-3 text-sm font-semibold text-green-700 dark:border-green-900/50 dark:bg-green-950/30 dark:text-green-300">
                       Cette inscription a été validée.
                     </div>
+                  )}
+
+                  {/* RESPONSABILITÉS DU MEMBRE */}
+
+                  {status === "validated" && (
+                    <section className="border-t border-gray-200 bg-white px-5 py-5 dark:border-gray-800 dark:bg-gray-900">
+                      <div className="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                        <div>
+                          <h4 className="text-base font-extrabold text-gray-900 dark:text-white">
+                            Responsabilités
+                          </h4>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Nomination et gestion des fonctions de ce membre.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleNommerResponsable(inscrit)}
+                          disabled={processing || !inscrit.pays}
+                          className="rounded-xl bg-indigo-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          + Nommer responsable
+                        </button>
+                      </div>
+
+                      {responsabilitesLoading && !responsabilites[inscrit.id] ? (
+                        <p className="text-sm text-gray-500">
+                          Chargement des responsabilités...
+                        </p>
+                      ) : (responsabilites[inscrit.id] || []).length === 0 ? (
+                        <p className="rounded-xl bg-gray-50 p-3 text-sm text-gray-500 dark:bg-gray-950 dark:text-gray-400">
+                          Aucune responsabilité active pour ce membre.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {(responsabilites[inscrit.id] || []).map((responsabilite) => (
+                            <div
+                              key={responsabilite.id}
+                              className="flex flex-col justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20 sm:flex-row sm:items-center"
+                            >
+                              <div>
+                                <p className="font-bold text-gray-900 dark:text-white">
+                                  {responsabilite.role_name}
+                                  {responsabilite.is_primary && (
+                                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                      Premier responsable
+                                    </span>
+                                  )}
+                                </p>
+
+                                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                  Niveau : {
+                                    responsabilite.level === "national"
+                                      ? "National"
+                                      : responsabilite.level === "diocesan"
+                                        ? "Diocésain"
+                                        : "Paroissial"
+                                  }
+                                </p>
+
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                  {[
+                                    responsabilite.country,
+                                    responsabilite.diocese,
+                                    responsabilite.parish,
+                                  ].filter(Boolean).join(" · ")}
+                                </p>
+
+                                {responsabilite.effective_from && (
+                                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Prise de fonction : {responsabilite.effective_from}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleModifierResponsabilite(inscrit, responsabilite)
+                                  }
+                                  disabled={processing}
+                                  className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-900 dark:bg-gray-900 dark:text-blue-300"
+                                >
+                                  Modifier
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRetirerResponsabilite(inscrit, responsabilite)
+                                  }
+                                  disabled={processing}
+                                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-300"
+                                >
+                                  Retirer
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
                   )}
 
                 </motion.article>
