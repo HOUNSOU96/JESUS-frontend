@@ -159,8 +159,7 @@ const Continent: React.FC = () => {
                     )}
 
                     <span className="absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-blue-800 shadow dark:bg-gray-800 dark:text-blue-300">
-                      {country.dioceses.length}{" "}
-                      {country.dioceses.length > 1 ? "diocèses" : "diocèse"}
+                      Organisation ecclésiastique
                     </span>
                   </div>
 

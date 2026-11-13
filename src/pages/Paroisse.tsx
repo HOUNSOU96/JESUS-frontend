@@ -5,6 +5,18 @@ import { continents } from "../data";
 import api from "../utils/axios";
 import UserAvatar from "../components/UserAvatar";
 
+interface EcclesiasticalJurisdiction {
+  id: number;
+  name: string;
+  kind: string;
+}
+
+interface GeographicParish {
+  id: number;
+  name: string;
+  city_id: number | null;
+}
+
 interface DiocesanResponsible {
   id: number;
   user_id: number;
@@ -50,6 +62,11 @@ const Paroisse: React.FC = () => {
   const [loadingResponsables, setLoadingResponsables] = useState(true);
   const [errorResponsables, setErrorResponsables] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [selectedDiocese, setSelectedDiocese] =
+    useState<EcclesiasticalJurisdiction | null>(null);
+  const [parishes, setParishes] = useState<string[]>([]);
+  const [loadingGeography, setLoadingGeography] = useState(true);
+
 
   // ============================================================
   // RECHERCHE DU TERRITOIRE
@@ -66,11 +83,71 @@ const Paroisse: React.FC = () => {
     (item) => item.name.toLowerCase() === country?.toLowerCase()
   );
 
-  const selectedDiocese = selectedCountry?.dioceses.find(
-    (item) => item.name.toLowerCase() === diocese?.toLowerCase()
-  );
 
-  const parishes = selectedDiocese?.parishes || [];
+
+  useEffect(() => {
+    if (!country || !diocese || !selectedCountry) {
+      setSelectedDiocese(null);
+      setParishes([]);
+      setLoadingGeography(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadGeography = async () => {
+      setLoadingGeography(true);
+      setSelectedDiocese(null);
+      setParishes([]);
+
+      try {
+        const jurisdictionsResponse =
+          await api.get<EcclesiasticalJurisdiction[]>(
+            `/api/geography/jurisdictions?country=${encodeURIComponent(country.toLowerCase())}`
+          );
+
+        const jurisdictions = Array.isArray(jurisdictionsResponse.data)
+          ? jurisdictionsResponse.data
+          : [];
+
+        const found = jurisdictions.find(
+          (item) => item.name.trim().toLowerCase() === diocese.trim().toLowerCase()
+        );
+
+        if (!found) {
+          if (!cancelled) setSelectedDiocese(null);
+          return;
+        }
+
+        if (!cancelled) setSelectedDiocese(found);
+
+        const parishesResponse = await api.get<GeographicParish[]>(
+          `/api/geography/parishes?jurisdiction_id=${found.id}`
+        );
+
+        if (!cancelled) {
+          const records = Array.isArray(parishesResponse.data)
+            ? parishesResponse.data
+            : [];
+          setParishes(records.map((item) => item.name));
+        }
+      } catch (error) {
+        console.error("Erreur chargement de l'organisation géographique :", error);
+        if (!cancelled) {
+          setSelectedDiocese(null);
+          setParishes([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingGeography(false);
+      }
+    };
+
+    loadGeography();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [country, diocese, selectedCountry]);
 
   // ============================================================
   // CHARGEMENT DES RESPONSABLES
@@ -148,6 +225,17 @@ const Paroisse: React.FC = () => {
           >
             Retour à l'accueil
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadingGeography) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-white">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
+          <p className="mt-4">Chargement du diocèse et des paroisses...</p>
         </div>
       </div>
     );

@@ -5,6 +5,12 @@ import { continents } from "../data";
 import UserAvatar from "../components/UserAvatar";
 import api from "../utils/axios";
 
+interface EcclesiasticalJurisdiction {
+  id: number;
+  name: string;
+  kind: string;
+}
+
 interface NationalResponsible {
   id: number;
   user_id: number;
@@ -40,6 +46,9 @@ const Pays: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [dioceses, setDioceses] = useState<EcclesiasticalJurisdiction[]>([]);
+  const [loadingDioceses, setLoadingDioceses] = useState(true);
+
 
   const continent = continents.find((c) =>
     c.countries.some(
@@ -50,6 +59,41 @@ const Pays: React.FC = () => {
   const selectedCountry = continent?.countries.find(
     (p) => p.name.toLowerCase() === country?.toLowerCase()
   );
+
+
+  useEffect(() => {
+    if (!country || !selectedCountry) {
+      setDioceses([]);
+      setLoadingDioceses(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDioceses = async () => {
+      setLoadingDioceses(true);
+      try {
+        const response = await api.get<EcclesiasticalJurisdiction[]>(
+          `/api/geography/jurisdictions?country=${encodeURIComponent(country.toLowerCase())}`
+        );
+
+        if (!cancelled) {
+          setDioceses(Array.isArray(response.data) ? response.data : []);
+        }
+      } catch (err) {
+        console.error("Erreur chargement des diocèses :", err);
+        if (!cancelled) setDioceses([]);
+      } finally {
+        if (!cancelled) setLoadingDioceses(false);
+      }
+    };
+
+    fetchDioceses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [country, selectedCountry]);
 
   useEffect(() => {
     if (!country || !selectedCountry) {
@@ -115,7 +159,7 @@ const Pays: React.FC = () => {
     );
   }
 
-  const dioceses = selectedCountry.dioceses || [];
+
 
   const handleDioceseClick = (diocese: string) => {
     navigate(

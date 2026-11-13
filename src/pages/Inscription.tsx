@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { continents, worldCountries } from "@/data";
+import { worldCountries } from "@/data";
 import api from "@/utils/axios";
 
 type FormDataType = {
