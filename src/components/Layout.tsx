@@ -68,6 +68,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <header className="relative z-30 w-full px-4 sm:px-6 lg:px-12 pt-4">
           <nav className="mx-auto max-w-7xl flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-yellow-500/30 bg-black/75 p-3 shadow-lg backdrop-blur-md">
             <Link
+              to="/documents"
+              className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/25"
+            >
+              📘 Mon document
+            </Link>
+
+            <Link
               to="/ma-carte"
               className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 text-sm font-semibold text-yellow-300 transition hover:bg-yellow-500/25"
             >
@@ -75,12 +82,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
 
             {(user.is_admin === true || user.is_admin === 1) && (
-              <Link
-                to="/admin/cartes"
-                className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/25"
-              >
-                ✓ Validation des cartes
-              </Link>
+              <>
+                <Link
+                  to="/admin/documents"
+                  className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/25"
+                >
+                  📘 Gestion des documents
+                </Link>
+                <Link
+                  to="/admin/cartes"
+                  className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/25"
+                >
+                  ✓ Validation des cartes
+                </Link>
+              </>
             )}
           </nav>
         </header>

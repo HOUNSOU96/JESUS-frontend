@@ -356,11 +356,11 @@ const ListeInscrits: React.FC = () => {
     ];
 
     const choixFonction = window.prompt(
-      "FONCTION À ATTRIBUER :\\n\\n" +
+      "FONCTION À ATTRIBUER :\n\n" +
       fonctions.map((fonction, index) =>
         `${index + 1}. ${fonction}`
-      ).join("\\n") +
-      "\\n\\nSaisis le numéro de la fonction."
+      ).join("\n") +
+      "\n\nSaisis le numéro de la fonction."
     );
 
     if (choixFonction === null) return;
@@ -470,11 +470,11 @@ const ListeInscrits: React.FC = () => {
     const choixActuel = fonctions.indexOf(responsabilite.role_name) + 1;
 
     const choixFonction = window.prompt(
-      "CHOISIR LA NOUVELLE FONCTION :\\n\\n" +
+      "CHOISIR LA NOUVELLE FONCTION :\n\n" +
       fonctions.map((fonction, index) =>
         `${index + 1}. ${fonction}`
-      ).join("\\n") +
-      "\\n\\nSaisis le numéro de la fonction.",
+      ).join("\n") +
+      "\n\nSaisis le numéro de la fonction.",
       String(choixActuel)
     );
 

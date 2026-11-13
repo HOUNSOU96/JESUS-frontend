@@ -17,6 +17,8 @@ import ListeInscrits from "./pages/ListeInscrits";
 import NotFound from "./pages/NotFound";
 import MaCarte from "./pages/MaCarte";
 import ValidationCartes from "./pages/ValidationCartes";
+import Documents from "./pages/Documents";
+import AdminDocuments from "./pages/AdminDocuments";
 import RequireAdmin from "@/components/RequireAdmin";
 
 const protectedPages = [
@@ -47,6 +49,28 @@ const AnimatedRoutes: React.FC = () => {
             <RequireAuth>
               <RequireAdmin>
                 <Layout><ValidationCartes /></Layout>
+              </RequireAdmin>
+            </RequireAuth>
+          }
+        />
+
+
+        <Route
+          path="/documents"
+          element={
+            <RequireAuth>
+              <Layout><Documents /></Layout>
+            </RequireAuth>
+          }
+        />
+
+
+        <Route
+          path="/admin/documents"
+          element={
+            <RequireAuth>
+              <RequireAdmin>
+                <Layout><AdminDocuments /></Layout>
               </RequireAdmin>
             </RequireAuth>
           }

@@ -30,12 +30,14 @@ const MaCarte: React.FC = () => {
   const [cards, setCards] = useState<Card[]>([]);
   const [city, setCity] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [signature, setSignature] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const signatureRef = useRef<HTMLInputElement>(null);
 
   const loadCards = async () => {
     try {
@@ -83,13 +85,19 @@ const MaCarte: React.FC = () => {
     form.append("city", city.trim());
     form.append("photo", photo);
 
+    if (signature) {
+      form.append("signature", signature);
+    }
+
     setSending(true);
     try {
       const response = await api.post("/api/identity-cards/requests", form);
       setMessage(response.data?.message || "Votre demande a été envoyée.");
       setPhoto(null);
+      setSignature(null);
       setCity("");
       if (inputRef.current) inputRef.current.value = "";
+      if (signatureRef.current) signatureRef.current.value = "";
       await loadCards();
     } catch (err: any) {
       setError(
@@ -239,6 +247,36 @@ const MaCarte: React.FC = () => {
                 />
               </label>
               {photo && <p className="mt-2 text-xs text-green-300">{photo.name}</p>}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold">
+                Signature du membre (facultative)
+              </label>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-white/5 p-5 text-center transition hover:bg-white/10">
+                <span className="text-2xl text-amber-300">✍</span>
+                <span className="mt-2 text-sm font-bold">
+                  Ajouter ma signature
+                </span>
+                <span className="mt-1 text-xs text-white/50">
+                  JPG, PNG ou WebP — maximum 2 Mo
+                </span>
+                <input
+                  ref={signatureRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) =>
+                    setSignature(e.target.files?.[0] || null)
+                  }
+                  disabled={hasPending || hasValid}
+                />
+              </label>
+              {signature && (
+                <p className="mt-2 text-xs text-green-300">
+                  Signature : {signature.name}
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl bg-amber-300/10 p-4 text-xs leading-5 text-amber-100/80">
