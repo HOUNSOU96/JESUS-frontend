@@ -18,6 +18,9 @@ type Card = {
   id: number;
   city?: string;
   requested_at?: string;
+  age_at_request?: number | null;
+  support_amount?: number | null;
+  support_message?: string | null;
   member?: Member;
 };
 
@@ -31,6 +34,7 @@ const ValidationCartes: React.FC = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [rejection, setRejection] = useState<Card | null>(null);
+  const [approval, setApproval] = useState<Card | null>(null);
   const [reason, setReason] = useState("");
   const [photos, setPhotos] = useState<Record<number, string>>({});
   const [photoErrors, setPhotoErrors] = useState<Record<number, string>>({});
@@ -93,15 +97,22 @@ const ValidationCartes: React.FC = () => {
     };
   }, [cards]);
 
-  const approve = async (card: Card) => {
-    if (!window.confirm(`Confirmer l'approbation de la carte de ${card.member?.prenom || ""} ${card.member?.nom || ""} ?`)) return;
+  const approve = (card: Card) => {
+    setApproval(card);
+  };
 
+  const confirmApproval = async () => {
+    if (!approval || busy !== null) return;
+
+    const card = approval;
     setBusy(card.id);
     setError("");
     setSuccess("");
+
     try {
       const response = await api.post(`/api/identity-cards/admin/${card.id}/approve`);
       setSuccess(response.data?.message || "Carte approuvée.");
+      setApproval(null);
       await load();
     } catch (err: any) {
       setError(err.response?.data?.detail || "L'approbation a échoué.");
@@ -186,7 +197,9 @@ const ValidationCartes: React.FC = () => {
                       <img
                         src={photos[card.id]}
                         alt="Photo d'identité du membre"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full cursor-zoom-in object-cover transition-transform hover:scale-105"
+                        onClick={() => window.open(photos[card.id], "_blank", "noopener,noreferrer")}
+                        title="Cliquer pour agrandir la photo"
                       />
                     ) : photoErrors[card.id] ? (
                       <div className="flex h-full items-center justify-center p-3 text-center text-xs text-red-300">
@@ -211,6 +224,8 @@ const ValidationCartes: React.FC = () => {
                       ["Paroisse", member?.paroisse],
                       ["Intégration", formatDate(member?.date_integration)],
                       ["Demande", formatDate(card.requested_at)],
+                      ["Âge au moment de la demande", card.age_at_request != null ? `${card.age_at_request} ans` : "—"],
+                      ["Soutien minimum", card.support_amount != null ? `${card.support_amount} F CFA` : "—"],
                     ].map(([label, value]) => (
                       <div key={label} className="min-w-0 rounded-xl bg-white/5 p-3">
                         <p className="text-[10px] uppercase tracking-wider text-amber-300">{label}</p>
@@ -218,6 +233,14 @@ const ValidationCartes: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                  {card.support_message && (
+                    <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-300">
+                        Message de soutien communiqué au membre
+                      </p>
+                      <p className="text-sm leading-relaxed text-white/90">{card.support_message}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-white/10 p-5 sm:flex-row">
@@ -242,14 +265,91 @@ const ValidationCartes: React.FC = () => {
         </div>
       )}
 
-      {rejection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-          <form onSubmit={reject} className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
-            <h2 className="text-xl font-black">Refuser la demande</h2>
-            <p className="mt-2 text-sm text-white/60">
-              Membre : {rejection.member?.prenom} {rejection.member?.nom}
+      {approval && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="approval-card-title"
+        >
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-amber-300/30 bg-gradient-to-b from-[#19150d] via-[#0d0c09] to-[#050505] p-6 text-white shadow-[0_25px_100px_rgba(0,0,0,0.85)] sm:p-8">
+            <div className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+            <div className="mb-5 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/10 text-2xl text-amber-200">
+                ✓
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400/70">
+                Espace administratif · Prestige Or
+              </p>
+              <h2 id="approval-card-title" className="mt-2 text-2xl font-black text-amber-100">
+                Confirmer l'approbation
+              </h2>
+            </div>
+
+            <div className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.06] p-4 text-center">
+              <p className="text-xs uppercase tracking-wider text-amber-300/70">Carte d'identité du membre</p>
+              <p className="mt-2 text-lg font-bold text-white">
+                {approval.member?.prenom} {approval.member?.nom}
+              </p>
+              <p className="mt-1 text-sm text-white/50">
+                Demande n° {approval.id}
+              </p>
+            </div>
+
+            <p className="mt-5 text-center text-sm leading-6 text-white/65">
+              Confirmez-vous l'approbation de cette demande et la génération de la carte d'identité ?
             </p>
-            <label className="mt-5 block text-sm font-semibold">Motif du refus *</label>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setApproval(null)}
+                disabled={busy === approval.id}
+                className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white/70 transition hover:border-amber-300/40 hover:bg-white/[0.08] disabled:opacity-40"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmApproval}
+                disabled={busy === approval.id}
+                className="rounded-xl border border-amber-200/70 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-4 py-3 text-sm font-black text-black shadow-lg shadow-amber-500/10 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy === approval.id ? "Traitement..." : "Confirmer l'approbation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejection && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rejection-card-title"
+        >
+          <form
+            onSubmit={reject}
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-amber-300/30 bg-gradient-to-b from-[#19150d] via-[#0d0c09] to-[#050505] p-6 text-white shadow-[0_25px_100px_rgba(0,0,0,0.85)] sm:p-8"
+          >
+            <div className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-300 to-transparent" />
+
+            <div className="text-center">
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-400/70">
+                Espace administratif · Prestige Or
+              </p>
+              <h2 id="rejection-card-title" className="mt-2 text-2xl font-black text-amber-100">
+                Refuser la demande
+              </h2>
+              <p className="mt-3 text-sm text-white/60">
+                Membre : <strong className="text-white">{rejection.member?.prenom} {rejection.member?.nom}</strong>
+              </p>
+            </div>
+
+            <label className="mt-6 block text-sm font-bold text-amber-100">
+              Motif du refus *
+            </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -257,12 +357,27 @@ const ValidationCartes: React.FC = () => {
               maxLength={2000}
               rows={5}
               placeholder="Précisez la raison du refus..."
-              className="mt-2 w-full rounded-xl border border-white/15 bg-white/5 p-4 text-white outline-none focus:border-amber-300"
+              className="mt-2 w-full rounded-xl border border-amber-300/20 bg-white/[0.04] p-4 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-amber-300/70 focus:ring-2 focus:ring-amber-300/10"
             />
-            <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setRejection(null)} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold">Annuler</button>
-              <button type="submit" disabled={busy === rejection.id || !reason.trim()} className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold disabled:opacity-40">
-                Confirmer le refus
+            <p className="mt-2 text-right text-xs text-white/35">
+              {reason.length}/2000 caractères
+            </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setRejection(null)}
+                disabled={busy === rejection.id}
+                className="rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white/70 transition hover:border-amber-300/40 hover:bg-white/[0.08] disabled:opacity-40"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={busy === rejection.id || !reason.trim()}
+                className="rounded-xl border border-red-400/40 bg-gradient-to-r from-red-700 to-red-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-red-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy === rejection.id ? "Traitement..." : "Confirmer le refus"}
               </button>
             </div>
           </form>

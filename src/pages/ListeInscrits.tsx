@@ -14,6 +14,9 @@ interface UserInscrit {
   matricule: string | null;
   sexe?: string | null;
   date_integration?: string | null;
+  age_at_request?: number | null;
+  support_amount?: number | null;
+  support_message?: string | null;
   statut?: string | null;
   requested_role?: string | null;
   profession?: string | null;
@@ -1101,6 +1104,19 @@ const ListeInscrits: React.FC = () => {
                         <Info
                           label="Date d'intégration"
                           value={formatDate(inscrit.date_integration)}
+                        />
+
+                        <Info
+                          label="Âge au moment de la demande"
+                          value={inscrit.age_at_request != null ? `${inscrit.age_at_request} ans` : "—"}
+                        />
+                        <Info
+                          label="Soutien minimum recommandé"
+                          value={inscrit.support_amount != null ? `${inscrit.support_amount} F CFA` : "—"}
+                        />
+                        <Info
+                          label="Message de soutien"
+                          value={inscrit.support_message}
                         />
 
                         <Info

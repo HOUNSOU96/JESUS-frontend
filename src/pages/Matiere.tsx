@@ -96,7 +96,7 @@ const Matiere: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.45 }}
-      className="relative z-20 min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-10 sm:px-6 sm:py-14"
+      className="hierarchy-page relative z-20 min-h-[calc(100vh-4rem)] overflow-hidden px-4 py-10 sm:px-6 sm:py-14"
     >
       {/* Décoration d'arrière-plan */}
       <div
@@ -111,31 +111,31 @@ const Matiere: React.FC = () => {
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/30 bg-white/10 shadow-2xl shadow-blue-950/30 backdrop-blur-xl"
+            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-400/50 bg-gradient-to-br from-amber-100 to-white shadow-xl shadow-amber-900/10 dark:from-gray-800 dark:to-gray-900"
           >
-            <FiGlobe className="text-5xl text-white" />
+            <FiGlobe className="text-5xl text-amber-700 dark:text-amber-300" />
           </motion.div>
 
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-blue-200 sm:text-sm">
+          <p className="mb-3 hierarchy-eyebrow text-xs font-bold uppercase tracking-[0.3em] sm:text-sm">
             Confrérie Saint Enfant Jésus
           </p>
 
-          <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-lg sm:text-4xl md:text-5xl">
+          <h1 className="hierarchy-title text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
             Choisissez un continent
           </h1>
 
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/85 sm:text-base">
+          <p className="hierarchy-description mx-auto mt-5 max-w-2xl text-sm leading-7 sm:text-base">
             Explorez les différentes régions du monde et découvrez
             l'organisation de notre confrérie à travers les continents.
           </p>
 
-          <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-gradient-to-r from-blue-300 via-white to-blue-300" />
+          <div className="gold-ornament" />
         </header>
 
         {/* Compteur */}
         <div className="mb-7 flex items-center justify-center">
-          <div className="flex items-center gap-3 rounded-full border border-white/20 bg-black/20 px-5 py-2.5 text-sm text-white shadow-lg backdrop-blur-md">
-            <FiGlobe className="text-lg text-blue-300" />
+          <div className="flex items-center gap-3 rounded-full border border-amber-500/30 bg-white/90 px-5 py-2.5 text-sm text-gray-800 shadow-lg dark:bg-gray-900/90 dark:text-gray-100">
+            <FiGlobe className="text-lg text-amber-600 dark:text-amber-300" />
             <span className="font-semibold">
               {continents.length} continents disponibles
             </span>
@@ -164,7 +164,7 @@ const Matiere: React.FC = () => {
                 }}
                 whileHover={{ y: -7, scale: 1.015 }}
                 whileTap={{ scale: 0.97 }}
-                className="group relative flex min-h-[190px] w-full flex-col overflow-hidden rounded-3xl border border-white/25 bg-white/90 p-6 text-left shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-300 hover:border-white/60 hover:bg-white dark:bg-gray-900/85 dark:hover:bg-gray-900 sm:min-h-[205px] sm:p-7"
+                className="group relative flex min-h-[190px] w-full flex-col overflow-hidden rounded-3xl gold-frame border border-white/25 bg-white/90 p-6 text-left shadow-xl shadow-black/10 backdrop-blur-xl transition-all duration-300 hover:border-white/60 hover:bg-white dark:bg-gray-900/90 dark:hover:bg-gray-900 sm:min-h-[205px] sm:p-7"
               >
                 {/* Halo décoratif */}
                 <div
@@ -214,7 +214,7 @@ const Matiere: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="mt-10 text-center text-xs leading-6 text-white/70 sm:text-sm"
+          className="hierarchy-description mt-10 text-center text-xs leading-6 sm:text-sm"
         >
           Sélectionnez un continent pour poursuivre votre exploration.
         </motion.p>

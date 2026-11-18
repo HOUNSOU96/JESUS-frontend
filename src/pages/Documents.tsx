@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import api from "@/utils/axios";
+import { useOperationProgress } from "@/components/OperationProgress";
 
 type DocumentRequest = {
   id: number;
@@ -22,9 +23,11 @@ const dateText = (value: string | null) =>
   value ? new Date(value).toLocaleString("fr-FR") : "—";
 
 const Documents: React.FC = () => {
+  const progress = useOperationProgress();
   const [requests, setRequests] = useState<DocumentRequest[]>([]);
   const [method, setMethod] = useState<"account" | "custom" | "parish_responsible">("account");
   const [customEmail, setCustomEmail] = useState("");
+  const [dateNaissance, setDateNaissance] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -48,26 +51,51 @@ const Documents: React.FC = () => {
 
   const submitRequest = async (event: React.FormEvent) => {
     event.preventDefault();
-    setSending(true);
     setError("");
     setMessage("");
+    if (!dateNaissance) {
+      setError("Veuillez renseigner votre date de naissance.");
+      return;
+    }
+    if (dateNaissance > new Date().toISOString().split("T")[0]) {
+      setError("La date de naissance ne peut pas être future.");
+      return;
+    }
+    setSending(true);
+    progress.start(
+      "Demande de document",
+      "Préparation et transmission de votre demande..."
+    );
 
     try {
       const payload: {
         delivery_method: string;
         destination_email?: string;
-      } = { delivery_method: method };
+        date_naissance: string;
+      } = {
+        delivery_method: method,
+        date_naissance: dateNaissance,
+      };
 
       if (method === "custom") {
         payload.destination_email = customEmail.trim();
       }
 
+      progress.update("Envoi de votre demande...");
       const response = await api.post("/api/documents/request", payload);
-      setMessage(response.data?.message || "Votre demande a été envoyée.");
+      const confirmation =
+        response.data?.support_message ||
+        response.data?.message ||
+        "Votre demande a été envoyée.";
+      setMessage(confirmation);
+      progress.success(confirmation);
       setCustomEmail("");
+      setDateNaissance("");
       await loadRequests();
     } catch (err) {
-      setError(errorMessage(err));
+      const message = errorMessage(err);
+      setError(message);
+      progress.error(message);
     } finally {
       setSending(false);
     }
@@ -77,12 +105,17 @@ const Documents: React.FC = () => {
     setDownloading(true);
     setError("");
     setMessage("");
+    progress.start(
+      "Téléchargement du document",
+      "Récupération de votre document PDF..."
+    );
 
     try {
       const response = await api.get("/api/documents/download", {
         responseType: "blob",
       });
 
+      progress.update("Préparation du fichier PDF...");
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -92,7 +125,9 @@ const Documents: React.FC = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setMessage("Le téléchargement de votre document a été lancé.");
+      const confirmation = "Le téléchargement de votre document a été lancé par le navigateur.";
+      setMessage(confirmation);
+      progress.success(confirmation);
     } catch (err: any) {
       if (err?.response?.data instanceof Blob) {
         try {
@@ -105,6 +140,7 @@ const Documents: React.FC = () => {
       } else {
         setError(errorMessage(err));
       }
+      progress.error(errorMessage(err));
     } finally {
       setDownloading(false);
     }
@@ -136,6 +172,21 @@ const Documents: React.FC = () => {
         )}
 
         <form onSubmit={submitRequest} className="space-y-5">
+          <div>
+            <label className="mb-2 block font-semibold text-yellow-100">
+              Date de naissance *
+            </label>
+            <input
+              type="date"
+              value={dateNaissance}
+              onChange={(event) => setDateNaissance(event.target.value)}
+              max={new Date().toISOString().split("T")[0]}
+              required
+              disabled={hasPending}
+              className="w-full rounded-xl border border-white/15 bg-gray-900 px-4 py-3 text-white outline-none focus:border-yellow-400"
+            />
+          </div>
+
           <div>
             <label className="mb-2 block font-semibold text-yellow-100">
               Adresse e-mail de réception

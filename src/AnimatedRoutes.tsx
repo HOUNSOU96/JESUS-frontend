@@ -18,6 +18,8 @@ import NotFound from "./pages/NotFound";
 import MaCarte from "./pages/MaCarte";
 import ValidationCartes from "./pages/ValidationCartes";
 import Documents from "./pages/Documents";
+import MonProfil from "./pages/MonProfil";
+import Prieres from "./pages/Prieres";
 import AdminDocuments from "./pages/AdminDocuments";
 import RequireAdmin from "@/components/RequireAdmin";
 
@@ -54,6 +56,25 @@ const AnimatedRoutes: React.FC = () => {
           }
         />
 
+
+        <Route
+          path="/mon-profil"
+          element={
+            <RequireAuth>
+              <Layout><MonProfil /></Layout>
+            </RequireAuth>
+          }
+        />
+
+
+        <Route
+          path="/prieres"
+          element={
+            <RequireAuth>
+              <Layout><Prieres /></Layout>
+            </RequireAuth>
+          }
+        />
 
         <Route
           path="/documents"

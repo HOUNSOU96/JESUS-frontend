@@ -362,7 +362,7 @@ const Inscrits: React.FC = () => {
 
   return (
     <motion.div
-      className="mx-auto flex w-full max-w-7xl flex-col px-4 py-8 text-gray-900 dark:text-white sm:px-6 lg:px-8"
+      className="hierarchy-page mx-auto flex w-full max-w-7xl flex-col rounded-3xl px-4 py-8 text-gray-900 dark:text-white sm:px-6 lg:px-8"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -444,7 +444,6 @@ const Inscrits: React.FC = () => {
             <p className="font-medium text-red-700 dark:text-red-300">
               ⚠️ {responsablesError}
             </p>
-
             <button
               type="button"
               onClick={handleRefresh}
@@ -454,69 +453,149 @@ const Inscrits: React.FC = () => {
             </button>
           </div>
         ) : responsables.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-gray-300 bg-white/80 px-5 py-10 text-center dark:border-gray-700 dark:bg-gray-800/80">
+          <div className="gold-frame rounded-2xl bg-white/80 px-5 py-10 text-center dark:bg-gray-900/80">
             <div className="text-4xl">⛪</div>
-
             <p className="mt-3 font-semibold text-gray-700 dark:text-gray-200">
               Aucun responsable enregistré
             </p>
-
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Les responsables de cette paroisse apparaîtront ici.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {responsables.map((responsable, index) => (
-              <motion.article
-                key={responsable.id}
-                className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white/95 p-5 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800/95"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.06 }}
-              >
-                {responsable.is_primary && (
-                  <div className="absolute right-0 top-0 rounded-bl-xl bg-green-600 px-3 py-1.5 text-xs font-bold text-white">
-                    ★ Premier responsable
+          <div className="space-y-6">
+            {/* PROFIL PRINCIPAL : PREMIER RESPONSABLE */}
+            {(() => {
+              const principal = responsables[0];
+
+              return (
+                <motion.article
+                  className="gold-frame gold-corner relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-yellow-100 p-6 shadow-xl dark:from-gray-900 dark:via-gray-900 dark:to-amber-950/30 sm:p-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45 }}
+                >
+                  <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl" />
+
+                  <div className="relative z-10 grid items-center gap-7 md:grid-cols-[220px_1fr]">
+                    <div className="mx-auto w-full max-w-[220px] text-center">
+                      <div
+                        className={`relative mx-auto h-48 w-48 overflow-hidden rounded-full border-4 border-amber-400 bg-amber-100 shadow-2xl ring-8 ring-amber-400/10 dark:bg-gray-800 sm:h-52 sm:w-52 ${principal.photo_url ? "cursor-zoom-in" : ""}`}
+                        onClick={() => principal.photo_url && window.open(principal.photo_url, "_blank", "noopener,noreferrer")}
+                        title={principal.photo_url ? "Cliquer pour agrandir la photo" : undefined}
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-amber-700 dark:text-amber-300">
+                          {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
+                        </div>
+
+                        {principal.photo_url && (
+                          <img
+                            src={principal.photo_url}
+                            alt={`Portrait de ${principal.prenom} ${principal.nom}`}
+                            className="absolute inset-0 h-full w-full object-cover"
+                            onError={(event) => {
+                              event.currentTarget.style.display = "none";
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-100 px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+                        ★ {principal.is_primary
+                          ? "Responsable principal"
+                          : "Responsable de la paroisse"}
+                      </div>
+                    </div>
+
+                    <div className="text-center md:text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300">
+                        Confrérie Saint Enfant Jésus
+                      </p>
+
+                      <h3 className="mt-3 text-2xl font-black leading-tight text-gray-900 dark:text-white sm:text-3xl lg:text-4xl">
+                        {principal.prenom} {principal.nom}
+                      </h3>
+
+                      <p className="mt-3 text-lg font-bold text-amber-700 dark:text-amber-300">
+                        {principal.role_name}
+                      </p>
+
+                      <div className="mx-auto mt-5 h-1 w-20 rounded-full bg-gradient-to-r from-amber-600 via-yellow-300 to-amber-600 md:mx-0" />
+
+                      <div className="mt-5 flex flex-wrap justify-center gap-3 text-sm text-gray-600 dark:text-gray-300 md:justify-start">
+                        {principal.matricule && (
+                          <span className="rounded-xl border border-amber-500/20 bg-white/70 px-4 py-2 dark:bg-gray-800/80">
+                            Matricule : <strong>{principal.matricule}</strong>
+                          </span>
+                        )}
+
+                        {principal.effective_from && (
+                          <span className="rounded-xl border border-amber-500/20 bg-white/70 px-4 py-2 dark:bg-gray-800/80">
+                            Depuis le {formatDate(principal.effective_from)}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-5 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                        {principal.is_primary
+                          ? "Responsable principal actuellement désigné pour cette paroisse."
+                          : "Responsable actuellement enregistré au sein de cette paroisse."}
+                      </p>
+                    </div>
                   </div>
-                )}
+                </motion.article>
+              );
+            })()}
 
-                <div className="flex items-center gap-4 pt-3">
-                  <UserAvatar
-                    photoUrl={responsable.photo_url}
-                    name={`${responsable.prenom} ${responsable.nom}`}
-                  />
+            {/* AUTRES RESPONSABLES */}
+            {responsables.length > 1 && (
+              <div>
+                <h3 className="mb-5 text-xl font-extrabold text-gray-900 dark:text-white">
+                  Autres responsables
+                </h3>
 
-                  <div className="min-w-0">
-                    <h3 className="break-words text-lg font-bold text-gray-900 dark:text-white">
-                      {responsable.prenom} {responsable.nom}
-                    </h3>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  {responsables.slice(1).map((responsable, index) => (
+                    <motion.article
+                      key={responsable.id}
+                      className="gold-frame relative overflow-hidden rounded-2xl bg-white/90 p-5 shadow-lg transition duration-300 hover:-translate-y-1 dark:bg-gray-900/90"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.06 }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <UserAvatar
+                          photoUrl={responsable.photo_url}
+                          name={`${responsable.prenom} ${responsable.nom}`}
+                        />
 
-                    <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">
-                      {responsable.role_name}
-                    </p>
+                        <div className="min-w-0">
+                          <h4 className="break-words text-lg font-bold text-gray-900 dark:text-white">
+                            {responsable.prenom} {responsable.nom}
+                          </h4>
 
-                    {responsable.effective_from && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Prise d’effet : {formatDate(responsable.effective_from)}
-                      </p>
-                    )}
+                          <p className="mt-1 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                            {responsable.role_name}
+                          </p>
 
-                    {responsable.ended_at && (
-                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                        Fin de responsabilité : {formatDate(responsable.ended_at)}
-                      </p>
-                    )}
+                          {responsable.matricule && (
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Matricule : {responsable.matricule}
+                            </p>
+                          )}
 
-                    {responsable.matricule && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Matricule : {responsable.matricule}
-                      </p>
-                    )}
-                  </div>
+                          {responsable.effective_from && (
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Prise d’effet : {formatDate(responsable.effective_from)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.article>
+                  ))}
                 </div>
-              </motion.article>
-            ))}
+              </div>
+            )}
           </div>
         )}
       </section>

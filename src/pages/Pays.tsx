@@ -173,7 +173,7 @@ const Pays: React.FC = () => {
 
   return (
     <motion.main
-      className="relative z-20 min-h-screen w-full px-4 py-8 sm:px-6 sm:py-12 text-white"
+      className="hierarchy-page relative z-20 min-h-screen w-full px-4 py-8 sm:px-6 sm:py-12"
       initial={{ opacity: 0, y: 25 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -25 }}
@@ -184,26 +184,26 @@ const Pays: React.FC = () => {
         {/* EN-TÊTE DU PAYS */}
 
         <header className="mb-12 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-2 text-sm text-blue-100">
+          <div className="gold-frame inline-flex items-center gap-2 rounded-full bg-white/80 px-5 py-2 text-sm text-amber-800 dark:bg-gray-900/90 dark:text-amber-300">
             <span>🌍</span>
             <span>{continent.name}</span>
           </div>
 
-          <h1 className="mt-5 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
+          <h1 className="hierarchy-title mt-5 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
             {selectedCountry.label}
           </h1>
 
-          <p className="mt-3 text-sm sm:text-base text-gray-300">
+          <p className="hierarchy-description mt-3 text-sm sm:text-base">
             Découvrez les diocèses et les responsables nationaux.
           </p>
 
-          <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-blue-500" />
+          <div className="gold-divider" />
         </header>
 
         {/* INDICATEURS */}
 
         <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 text-center shadow-lg">
+          <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
             <div className="text-3xl mb-2">🏛️</div>
             <p className="text-3xl font-extrabold text-white">
               {dioceses.length}
@@ -213,7 +213,7 @@ const Pays: React.FC = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/10 p-5 text-center shadow-lg">
+          <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
             <div className="text-3xl mb-2">👥</div>
             <p className="text-3xl font-extrabold text-white">
               {loading ? "…" : responsables.length}
@@ -255,7 +255,7 @@ const Pays: React.FC = () => {
                   transition={{ delay: Math.min(index * 0.04, 0.3) }}
                   whileHover={{ y: -5 }}
                   whileTap={{ scale: 0.98 }}
-                  className="group flex items-center gap-4 rounded-2xl border border-white/15 bg-white/10 p-5 text-left shadow-lg backdrop-blur-sm transition-all hover:border-blue-400/60 hover:bg-blue-900/30"
+                  className="gold-frame gold-corner group flex items-center gap-4 rounded-2xl bg-white/85 p-5 text-left shadow-lg backdrop-blur-sm transition-all hover:bg-amber-50 dark:bg-gray-900/85 dark:hover:bg-gray-800"
                 >
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-500/20 text-3xl transition group-hover:bg-blue-500/30">
                     🏛️
@@ -265,7 +265,7 @@ const Pays: React.FC = () => {
                     <h3 className="font-bold text-white text-base sm:text-lg">
                       {diocese.name}
                     </h3>
-                    <p className="mt-1 text-xs text-gray-300">
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                       Consulter les paroisses
                     </p>
                   </div>
@@ -343,7 +343,7 @@ const Pays: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(index * 0.05, 0.35) }}
-                  className="relative overflow-hidden rounded-2xl border border-white/15 bg-white/10 p-5 shadow-lg backdrop-blur-sm transition hover:border-blue-400/40 hover:bg-white/15"
+                  className={`gold-frame gold-corner relative overflow-hidden rounded-2xl bg-white/90 p-5 shadow-lg backdrop-blur-sm transition dark:bg-gray-900/90 ${responsable.is_primary ? "ring-2 ring-amber-400/50" : ""}`}
                 >
                   <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-blue-500/10" />
 
@@ -354,28 +354,28 @@ const Pays: React.FC = () => {
                     />
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-white text-base sm:text-lg break-words">
+                      <h3 className="text-gray-900 dark:text-white font-bold text-base sm:text-lg break-words">
                         {responsable.prenom} {responsable.nom}
                       </h3>
 
-                      <p className="mt-1 text-sm font-semibold text-blue-300">
+                      <p className="mt-1 text-sm font-semibold text-amber-700 dark:text-amber-300">
                         {responsable.role_name}
                       </p>
 
                       {responsable.effective_from && (
-                        <p className="mt-1 text-xs text-gray-300">
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                           Prise d’effet : {formatResponsibilityDate(responsable.effective_from)}
                         </p>
                       )}
 
                       {responsable.ended_at && (
-                        <p className="mt-1 text-xs text-amber-300">
+                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
                           Fin de responsabilité : {formatResponsibilityDate(responsable.ended_at)}
                         </p>
                       )}
 
                       {responsable.matricule && (
-                        <p className="mt-1 text-xs text-gray-300">
+                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                           Matricule : {responsable.matricule}
                         </p>
                       )}
@@ -384,13 +384,13 @@ const Pays: React.FC = () => {
 
                   <div className="relative mt-5 flex flex-wrap items-center gap-2">
                     {responsable.is_primary && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-green-400/20 bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-200">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
                         ✓ Premier responsable
                       </span>
                     )}
 
                     {responsable.statut && (
-                      <span className="rounded-full border border-blue-400/20 bg-blue-500/15 px-3 py-1 text-xs font-medium text-blue-200">
+                      <span className="rounded-full border border-blue-400/30 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-500/15 dark:text-blue-200">
                         {responsable.statut}
                       </span>
                     )}

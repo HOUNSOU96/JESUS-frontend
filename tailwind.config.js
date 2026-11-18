@@ -4,35 +4,30 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  darkMode: "class", // 👈 Active le mode sombre via la classe "dark"
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
         primary: "#1E3A8A",
         secondary: "#10B981",
+        accent: "#D4AF37",
+        gold: {
+          300: "#F3D77A",
+          400: "#D4AF37",
+          500: "#B8860B",
+          600: "#997515",
+        },
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ["Inter", "sans-serif"],
+      },
+      animation: {
+        "spin-slow": "spin 8s linear infinite",
       },
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
+    require("@tailwindcss/forms"),
+    require("@tailwindcss/typography"),
   ],
-  theme: {
-  extend: {
-    colors: {
-      primary: '#1e40af',
-      accent: '#fbbf24',
-    },
-  },
-},
-extend: {
-  animation: {
-    'spin-slow': 'spin 8s linear infinite',
-  },
-}
-
-
 };

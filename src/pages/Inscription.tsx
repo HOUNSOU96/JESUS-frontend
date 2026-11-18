@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { worldCountries } from "@/data";
 import api from "@/utils/axios";
+import { useOperationProgress } from "@/components/OperationProgress";
 
 type FormDataType = {
   nom: string;
@@ -50,14 +51,17 @@ const labelClass =
 
 export default function Inscription() {
   const navigate = useNavigate();
+  const progress = useOperationProgress();
 
   const [formData, setFormData] = useState<FormDataType>(initialForm);
+  const [dateNaissance, setDateNaissance] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [matricule, setMatricule] = useState("");
   const [confirmationMessage, setConfirmationMessage] = useState("");
+  const [copyStatus, setCopyStatus] = useState("");
   const [jurisdictions, setJurisdictions] = useState<Jurisdiction[]>([]);
   const [cities, setCities] = useState<GeoCity[]>([]);
   const [parishes, setParishes] = useState<GeoParish[]>([]);
@@ -267,6 +271,12 @@ export default function Inscription() {
       }
     });
 
+    if (!dateNaissance) {
+      newErrors.dateNaissance = "La date de naissance est obligatoire.";
+    } else if (dateNaissance > new Date().toISOString().split("T")[0]) {
+      newErrors.dateNaissance = "La date de naissance ne peut pas être future.";
+    }
+
     if (formData.numero && !/^[0-9\s().-]{6,20}$/.test(formData.numero)) {
       newErrors.numero = "Vérifie le numéro de téléphone saisi.";
     }
@@ -286,6 +296,33 @@ export default function Inscription() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleCopyMatricule = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(matricule);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = matricule;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        const copied = document.execCommand("copy");
+        document.body.removeChild(textarea);
+
+        if (!copied) {
+          throw new Error("La copie automatique a échoué.");
+        }
+      }
+
+      setCopyStatus("Matricule copié avec succès ! Conservez-le précieusement.");
+    } catch (error) {
+      console.error("Erreur lors de la copie du matricule :", error);
+      setCopyStatus("Copie impossible. Veuillez sélectionner et copier votre matricule manuellement.");
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -293,6 +330,10 @@ export default function Inscription() {
     if (!validerFormulaire()) return;
 
     setLoading(true);
+    progress.start(
+      "Inscription en cours",
+      "Préparation et transmission de votre demande d'inscription..."
+    );
 
     try {
       const payload = new FormData();
@@ -304,18 +345,23 @@ export default function Inscription() {
           payload.append(key, value.trim());
         }
       });
+      payload.append("date_naissance", dateNaissance);
 
       if (photo) {
         payload.append("photo", photo);
       }
 
+      progress.update("Envoi de votre dossier au serveur...");
       const response = await api.post("/api/auth/register", payload);
 
       setMatricule(response.data.matricule);
-      setConfirmationMessage(
-        response.data.message ||
-          "Votre inscription a été enregistrée. Votre compte est en attente de validation."
-      );
+      const confirmation =
+        response.data?.support_message ||
+        response.data?.message ||
+        "Votre inscription a été enregistrée. Votre compte est en attente de validation.";
+
+      setConfirmationMessage(confirmation);
+      progress.success(confirmation);
     } catch (error: any) {
       const message =
         error.response?.data?.detail ||
@@ -324,6 +370,7 @@ export default function Inscription() {
         "Une erreur est survenue pendant l'inscription.";
 
       setErrors((previous) => ({ ...previous, general: message }));
+      progress.error(message);
     } finally {
       setLoading(false);
     }
@@ -358,53 +405,159 @@ export default function Inscription() {
 
   if (matricule) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 dark:bg-gray-950">
+      <div className="relative flex min-h-screen items-center justify-center
+                      overflow-hidden bg-[#050505] px-4 py-10">
+        <div className="pointer-events-none absolute inset-0
+                        bg-[radial-gradient(ellipse_at_top,rgba(180,130,35,0.16),transparent_55%)]" />
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-lg rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-xl dark:border-gray-800 dark:bg-gray-900 sm:p-10"
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="relative w-full max-w-xl overflow-hidden rounded-[2rem]
+                     border border-amber-300/30 bg-gradient-to-b
+                     from-[#17130b] via-[#0c0b09] to-black
+                     p-6 text-center shadow-[0_25px_100px_rgba(0,0,0,0.8)]
+                     sm:p-10"
         >
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-4xl dark:bg-green-900/30">
+          <div className="absolute inset-x-12 top-0 h-px
+                          bg-gradient-to-r from-transparent
+                          via-amber-300 to-transparent" />
+
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center
+                          justify-center rounded-full border border-emerald-300/40
+                          bg-emerald-400/10 text-4xl text-emerald-300
+                          shadow-[0_0_35px_rgba(16,185,129,0.12)]">
             ✓
           </div>
 
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-green-700 dark:text-green-400">
-            Inscription enregistrée
+          <p className="mb-3 text-[10px] font-bold uppercase
+                        tracking-[0.35em] text-amber-400/75">
+            Confrérie Saint Enfant Jésus
           </p>
 
-          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">
-            Bienvenue dans la confrérie
+          <h1 className="text-2xl font-black tracking-wide text-amber-100 sm:text-3xl">
+            Inscription enregistrée
           </h1>
 
-          <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-gray-600 dark:text-gray-300">
+          <p className="mt-2 text-sm font-semibold text-emerald-300">
+            Bienvenue dans la confrérie
+          </p>
+
+          <div className="mx-auto my-6 h-px w-28 bg-gradient-to-r
+                          from-transparent via-amber-400/60 to-transparent" />
+
+          <p className="mx-auto max-w-md text-sm leading-7 text-white/70">
             {confirmationMessage}
           </p>
 
-          <div className="mt-7 rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900/50 dark:bg-blue-950/30">
-            <p className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-              Votre matricule
+          <div className="relative mt-8 overflow-hidden rounded-2xl
+                          border border-amber-300/40
+                          bg-gradient-to-br from-amber-300/[0.12]
+                          via-yellow-500/[0.05] to-transparent p-6 sm:p-7">
+            <div className="absolute right-3 top-2 text-3xl text-amber-300/20">
+              ✦
+            </div>
+
+            <p className="text-[10px] font-bold uppercase
+                          tracking-[0.3em] text-amber-300/75">
+              Votre numéro matricule
             </p>
-            <p className="mt-2 break-all text-xl font-extrabold tracking-wider text-blue-900 dark:text-blue-100">
+
+            <p className="mt-4 break-all text-2xl font-black
+                          tracking-[0.12em] text-amber-100 sm:text-3xl">
               {matricule}
             </p>
-            <p className="mt-3 text-xs text-blue-700 dark:text-blue-300">
-              Conservez précieusement ce matricule. Il vous sera demandé pour
-              vous connecter après validation de votre inscription.
+
+            <button
+              type="button"
+              onClick={handleCopyMatricule}
+              className="mt-6 inline-flex w-full items-center justify-center
+                         gap-3 rounded-xl border border-amber-200/70
+                         bg-gradient-to-r from-amber-300 via-yellow-400
+                         to-amber-500 px-5 py-4 text-sm font-black
+                         uppercase tracking-wider text-black shadow-lg
+                         shadow-amber-500/10 transition hover:brightness-110
+                         active:scale-[0.98]"
+            >
+              <span aria-hidden="true">▣</span>
+              Copier mon matricule
+            </button>
+
+            {copyStatus && (
+              <div
+                role="status"
+                aria-live="polite"
+                className={`mt-4 rounded-xl border px-4 py-3 text-xs
+                            font-semibold leading-5 ${
+                  copyStatus.startsWith("Matricule copié")
+                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                    : "border-red-400/30 bg-red-400/10 text-red-200"
+                }`}
+              >
+                {copyStatus}
+              </div>
+            )}
+
+            <p className="mt-5 text-xs leading-6 text-amber-100/65">
+              Conservez précieusement ce numéro. Il sera indispensable
+              pour vous connecter à votre compte après validation de
+              votre inscription.
             </p>
           </div>
 
-          <div className="mt-6 rounded-xl bg-amber-50 p-4 text-left text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-            <strong>À retenir :</strong> votre compte doit être validé par un
-            administrateur avant votre première connexion.
+          <div className="mt-6 rounded-2xl border border-amber-400/25
+                          bg-amber-400/[0.06] p-5 text-left">
+            <p className="mb-3 text-xs font-black uppercase
+                          tracking-wider text-amber-300">
+              ⚠ Informations importantes
+            </p>
+
+            <p className="text-sm leading-6 text-white/75">
+              Votre inscription doit d'abord être validée par les administrateurs.
+              Après cette validation, vous pourrez vous connecter avec :
+            </p>
+
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-white/80">
+              <li className="flex items-start gap-2">
+                <span className="text-amber-300">✦</span>
+                <span>
+                  <strong className="text-amber-100">Votre nom de famille</strong>,
+                  exactement comme vous l'avez renseigné lors de l'inscription.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-amber-300">✦</span>
+                <span>
+                  <strong className="text-amber-100">Votre numéro matricule</strong>,
+                  affiché ci-dessus.
+                </span>
+              </li>
+            </ul>
+
+            <p className="mt-4 border-t border-amber-300/15 pt-3
+                          text-xs font-semibold leading-5 text-amber-200/80">
+              Tant que votre inscription n'a pas été validée par
+              l'administration, l'accès à votre espace membre reste fermé.
+            </p>
           </div>
 
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="mt-7 w-full rounded-xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-blue-800"
+            className="mt-7 w-full rounded-xl border border-amber-300/50
+                       bg-white/[0.04] px-5 py-4 text-sm font-black
+                       uppercase tracking-wider text-amber-100
+                       transition hover:border-amber-200 hover:bg-amber-300/10
+                       active:scale-[0.99]"
           >
             Retour à la connexion
           </button>
+
+          <p className="mt-6 text-[9px] font-semibold uppercase
+                        tracking-[0.3em] text-white/25">
+            Prestige Or · Espace membre
+          </p>
         </motion.div>
       </div>
     );
@@ -521,6 +674,19 @@ export default function Inscription() {
                     className={inputClass}
                   />
                   <FieldError name="dateIntegration" />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Date de naissance *</label>
+                  <input
+                    type="date"
+                    value={dateNaissance}
+                    onChange={(event) => setDateNaissance(event.target.value)}
+                    max={new Date().toISOString().split("T")[0]}
+                    className={inputClass}
+                    required
+                  />
+                  <FieldError name="dateNaissance" />
                 </div>
               </div>
             </section>
@@ -710,7 +876,7 @@ export default function Inscription() {
                 </div>
 
                 <div>
-                  <label className={labelClass}>Ville *</label>
+                  <label className={labelClass}>Quartier/Zone *</label>
                   <select
                     name="ville"
                     value={formData.ville}
@@ -722,8 +888,8 @@ export default function Inscription() {
                       {!selectedJurisdiction
                         ? "Choisissez d'abord un diocèse"
                         : cities.length
-                          ? "Sélectionnez votre ville"
-                          : "Aucune ville enregistrée"}
+                          ? "Sélectionnez votre quartier/zone"
+                          : "Aucun quartier/zone enregistré"}
                     </option>
                     {cities.map((city) => (
                       <option key={city.id} value={city.name}>{city.name}</option>
@@ -743,10 +909,10 @@ export default function Inscription() {
                   >
                     <option value="">
                       {!selectedCity
-                        ? "Choisissez d'abord une ville"
+                        ? "Choisissez d'abord un quartier/une zone"
                         : parishes.length
                           ? "Sélectionnez votre paroisse"
-                          : "Aucune paroisse enregistrée dans cette ville"}
+                          : "Aucune paroisse enregistrée dans cette zone"}
                     </option>
                     {parishes.map((parish) => (
                       <option key={parish.id} value={parish.name}>
@@ -808,7 +974,11 @@ export default function Inscription() {
                   <label className={labelClass}>Photographie *</label>
 
                   <div className="flex flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-950 sm:flex-row">
-                    <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white text-4xl dark:border-gray-700 dark:bg-gray-900">
+                    <div
+                      className={`flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white text-4xl dark:border-gray-700 dark:bg-gray-900 ${photoPreview ? "cursor-zoom-in" : ""}`}
+                      onClick={() => photoPreview && window.open(photoPreview, "_blank", "noopener,noreferrer")}
+                      title={photoPreview ? "Cliquer pour agrandir la photo" : undefined}
+                    >
                       {photoPreview ? (
                         <img
                           src={photoPreview}

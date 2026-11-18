@@ -61,34 +61,34 @@ const Continent: React.FC = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
-      className="relative z-20 min-h-screen px-4 py-8 sm:px-6 sm:py-12"
+      className="hierarchy-page relative z-20 min-h-screen px-4 py-8 sm:px-6 sm:py-12"
     >
       <div className="mx-auto max-w-6xl">
         {/* En-tête */}
         <header className="mb-10 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/30 bg-white/90 text-4xl shadow-lg dark:bg-gray-900/90">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-50 to-white text-4xl shadow-lg dark:from-gray-800 dark:to-gray-900">
             {selected.icon}
           </div>
 
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.25em] text-blue-700 dark:text-blue-300">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300">
             Confrérie Saint Enfant Jésus
           </p>
 
-          <h1 className="text-3xl font-extrabold text-white drop-shadow-lg sm:text-4xl md:text-5xl">
+          <h1 className="hierarchy-title text-3xl font-extrabold sm:text-4xl md:text-5xl">
             {selected.label}
           </h1>
 
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/90 drop-shadow sm:text-base">
+          <p className="hierarchy-description mx-auto mt-4 max-w-xl text-sm leading-6 sm:text-base">
             Découvrez les pays de ce continent et accédez à leur organisation
             ecclésiastique.
           </p>
 
-          <div className="mx-auto mt-6 h-1 w-20 rounded-full bg-blue-400" />
+          <div className="gold-ornament" />
         </header>
 
         {/* Informations */}
         <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
-          <div className="rounded-full border border-white/20 bg-black/20 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
+          <div className="rounded-full border border-amber-500/30 bg-white/90 px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm dark:bg-gray-900 dark:text-gray-100">
             🌍 {selected.countries.length}{" "}
             {selected.countries.length > 1 ? "pays" : "pays"}
           </div>
@@ -137,7 +137,7 @@ const Continent: React.FC = () => {
                   }}
                   whileHover={{ y: -5 }}
                   whileTap={{ scale: 0.98 }}
-                  className="group overflow-hidden rounded-2xl border border-white/40 bg-white text-left shadow-lg transition-shadow hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-400/50 dark:border-gray-700 dark:bg-gray-900"
+                  className="group overflow-hidden rounded-2xl gold-frame border border-white/40 bg-white text-left shadow-lg transition-shadow hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-400/50 dark:border-gray-700 dark:bg-gray-900"
                 >
                   {/* Drapeau */}
                   <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-800 dark:to-gray-950">
@@ -187,7 +187,7 @@ const Continent: React.FC = () => {
 
         {/* Pied de page */}
         <footer className="mt-12 pb-6 text-center">
-          <p className="text-xs font-medium tracking-wide text-white/80 drop-shadow">
+          <p className="hierarchy-description text-xs font-medium tracking-wide">
             CONFRÉRIE SAINT ENFANT JÉSUS — MIRACULEUX DE PRAGUE
           </p>
         </footer>

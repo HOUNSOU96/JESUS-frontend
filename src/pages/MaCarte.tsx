@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "@/utils/axios";
 import { useAuth } from "@/context/AuthContext";
+import { useOperationProgress } from "@/components/OperationProgress";
 
 type Card = {
   id: number;
@@ -27,8 +28,10 @@ const statusLabel: Record<string, string> = {
 
 const MaCarte: React.FC = () => {
   const { user } = useAuth();
+  const progress = useOperationProgress();
   const [cards, setCards] = useState<Card[]>([]);
   const [city, setCity] = useState("");
+  const [dateNaissance, setDateNaissance] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [signature, setSignature] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
@@ -76,6 +79,14 @@ const MaCarte: React.FC = () => {
       setError("Veuillez renseigner votre ville.");
       return;
     }
+    if (!dateNaissance) {
+      setError("Veuillez renseigner votre date de naissance.");
+      return;
+    }
+    if (dateNaissance > new Date().toISOString().split("T")[0]) {
+      setError("La date de naissance ne peut pas être future.");
+      return;
+    }
     if (!photo) {
       setError("Veuillez ajouter votre photo d'identité.");
       return;
@@ -83,6 +94,7 @@ const MaCarte: React.FC = () => {
 
     const form = new FormData();
     form.append("city", city.trim());
+    form.append("date_naissance", dateNaissance);
     form.append("photo", photo);
 
     if (signature) {
@@ -90,38 +102,59 @@ const MaCarte: React.FC = () => {
     }
 
     setSending(true);
+    progress.start(
+      "Demande de carte",
+      "Transmission de votre demande de carte d'identité..."
+    );
     try {
       const response = await api.post("/api/identity-cards/requests", form);
-      setMessage(response.data?.message || "Votre demande a été envoyée.");
+      const confirmation =
+        response.data?.support_message ||
+        response.data?.message ||
+        "Votre demande a été envoyée.";
+      setMessage(confirmation);
+      progress.success(confirmation);
       setPhoto(null);
       setSignature(null);
       setCity("");
+      setDateNaissance("");
       if (inputRef.current) inputRef.current.value = "";
       if (signatureRef.current) signatureRef.current.value = "";
       await loadCards();
     } catch (err: any) {
-      setError(
+      const message =
         err.response?.data?.detail ||
-        "Une erreur est survenue pendant l'envoi de votre demande."
-      );
+        "Une erreur est survenue pendant l'envoi de votre demande.";
+      setError(message);
+      progress.error(message);
     } finally {
       setSending(false);
     }
   };
 
   const downloadPdf = async (card: Card) => {
+    progress.start(
+      "Téléchargement de la carte",
+      "Récupération du fichier PDF..."
+    );
     try {
       const response = await api.get(`/api/identity-cards/${card.id}/pdf`, {
         responseType: "blob",
       });
+      progress.update("Préparation du fichier PDF...");
       const url = URL.createObjectURL(response.data);
       const link = document.createElement("a");
       link.href = url;
       link.download = `carte-${card.card_number || card.id}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
+      progress.success(
+        "Le téléchargement de votre carte a été lancé par le navigateur."
+      );
     } catch {
-      setError("Le téléchargement de votre carte a échoué.");
+      const message = "Le téléchargement de votre carte a échoué.";
+      setError(message);
+      progress.error(message);
     }
   };
 
@@ -219,6 +252,19 @@ const MaCarte: React.FC = () => {
           )}
 
           <form onSubmit={submit} className="mt-6 space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold">Date de naissance *</label>
+              <input
+                type="date"
+                value={dateNaissance}
+                onChange={(e) => setDateNaissance(e.target.value)}
+                max={new Date().toISOString().split("T")[0]}
+                required
+                disabled={hasPending || hasValid}
+                className="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-white outline-none focus:border-amber-300"
+              />
+            </div>
+
             <div>
               <label className="mb-2 block text-sm font-semibold">Ville de résidence *</label>
               <input

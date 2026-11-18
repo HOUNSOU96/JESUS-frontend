@@ -113,3 +113,119 @@ body {
   animation-play-state: paused;
 }
 
+
+/* =========================================================
+   IDENTITÉ VISUELLE DORÉE — HIÉRARCHIE ECCLÉSIASTIQUE
+   ========================================================= */
+
+.hierarchy-page {
+  position: relative;
+  isolation: isolate;
+  color: #292524;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(212,175,55,.13), transparent 48%),
+    linear-gradient(145deg, rgba(250,248,242,.97), rgba(241,236,222,.96));
+}
+
+.dark .hierarchy-page {
+  color: #f5f1e7;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(212,175,55,.12), transparent 48%),
+    linear-gradient(145deg, #111827, #080d18);
+}
+
+.hierarchy-title {
+  color: #292524 !important;
+  text-shadow: none !important;
+}
+
+.dark .hierarchy-title {
+  color: #fff !important;
+}
+
+.hierarchy-description {
+  color: #57534e !important;
+}
+
+.dark .hierarchy-description {
+  color: #d6d3d1 !important;
+}
+
+.gold-frame {
+  border: 1px solid rgba(184,134,11,.38) !important;
+  box-shadow: 0 12px 35px rgba(75,55,15,.09);
+}
+
+.dark .gold-frame {
+  border-color: rgba(212,175,55,.35) !important;
+  box-shadow: 0 14px 38px rgba(0,0,0,.24);
+}
+
+.gold-ornament {
+  background: linear-gradient(90deg, transparent, #b8860b, #f3d77a, #b8860b, transparent);
+  height: 2px;
+  width: 110px;
+  margin: 1.4rem auto 0;
+  border-radius: 999px;
+}
+
+.dark .gold-ornament {
+  background: linear-gradient(90deg, transparent, #997515, #f3d77a, #997515, transparent);
+}
+
+.hierarchy-eyebrow {
+  color: #997515;
+}
+
+.dark .hierarchy-eyebrow {
+  color: #f3d77a;
+}
+
+
+/* IDENTITÉ VISUELLE HIÉRARCHIQUE JESUS */
+.hierarchy-page {
+  isolation: isolate;
+  color: #292524;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212,175,55,.15), transparent 32rem),
+    linear-gradient(135deg, rgba(250,248,242,.97), rgba(239,235,224,.94));
+  border-radius: 1.5rem;
+}
+.dark .hierarchy-page {
+  color: #f3f4f6;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212,175,55,.10), transparent 32rem),
+    linear-gradient(135deg, rgba(10,16,30,.97), rgba(17,24,39,.96));
+}
+.hierarchy-title { color: #292524 !important; text-shadow: none !important; }
+.dark .hierarchy-title { color: #fff !important; }
+.hierarchy-description { color: #57534e !important; }
+.dark .hierarchy-description { color: #d1d5db !important; }
+.gold-frame {
+  border: 1px solid rgba(184,134,11,.38) !important;
+  box-shadow: 0 12px 35px rgba(75,55,10,.10), inset 0 1px 0 rgba(255,255,255,.65);
+}
+.dark .gold-frame {
+  border-color: rgba(212,175,55,.38) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.gold-corner { position: relative; }
+.gold-corner::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(184,134,11,.15);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.dark .gold-corner::before { border-color: rgba(252,211,77,.12); }
+.gold-divider {
+  width: 5rem;
+  height: 3px;
+  margin: 1.25rem auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg,transparent,#b8860b,#f7df8a,#b8860b,transparent);
+}
+.dark .gold-divider {
+  background: linear-gradient(90deg,transparent,#a16207,#fcd34d,#a16207,transparent);
+}
