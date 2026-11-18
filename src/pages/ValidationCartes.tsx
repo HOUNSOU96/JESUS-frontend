@@ -149,7 +149,7 @@ const ValidationCartes: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-7xl py-8 text-white">
+    <div className="theme-adaptive mx-auto max-w-7xl py-8 text-white">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-amber-300">Espace administratif</p>

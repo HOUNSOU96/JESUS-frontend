@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const NotFound = () => {
   return (
-    <div className="text-center mt-10">
+    <div className="theme-adaptive text-center mt-10">
       <h1 className="text-4xl font-bold mb-4">404 - Page non trouvée</h1>
       <p className="mb-6">Désolé, cette page n'existe pas.</p>
       <Link

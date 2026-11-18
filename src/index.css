@@ -229,3 +229,36 @@ body {
 .dark .gold-divider {
   background: linear-gradient(90deg,transparent,#a16207,#fcd34d,#a16207,transparent);
 }
+
+
+/* Adaptation du thème clair des pages publiques et administratives */
+html:not(.dark) .theme-adaptive {
+  color: #292524;
+}
+html:not(.dark) .theme-adaptive [class*="bg-black/"],
+html:not(.dark) .theme-adaptive [class*="bg-slate-950"],
+html:not(.dark) .theme-adaptive [class*="from-[#171717]"],
+html:not(.dark) .theme-adaptive [class*="from-[#241c0d]"] {
+  background-color: #fffdf7 !important;
+  background-image: none !important;
+  border-color: rgba(184, 134, 11, .28);
+  color: #292524;
+}
+html:not(.dark) .theme-adaptive [class~="text-white"]:not(button):not(a),
+html:not(.dark) .theme-adaptive [class~="text-gray-300"],
+html:not(.dark) .theme-adaptive [class~="text-gray-400"],
+html:not(.dark) .theme-adaptive [class~="text-slate-300"],
+html:not(.dark) .theme-adaptive [class~="text-slate-400"] {
+  color: #44403c !important;
+}
+html:not(.dark) .theme-adaptive input,
+html:not(.dark) .theme-adaptive textarea,
+html:not(.dark) .theme-adaptive select {
+  background-color: #fff !important;
+  color: #292524 !important;
+  border-color: #d6c59a;
+}
+html:not(.dark) .theme-adaptive input::placeholder,
+html:not(.dark) .theme-adaptive textarea::placeholder {
+  color: #78716c !important;
+}

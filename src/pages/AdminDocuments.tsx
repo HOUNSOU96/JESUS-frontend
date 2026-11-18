@@ -117,7 +117,7 @@ const AdminDocuments: React.FC = () => {
   const pendingCount = requests.filter((item) => item.status === "pending").length;
 
   return (
-    <section className="mx-auto max-w-6xl py-8 text-white">
+    <section className="theme-adaptive mx-auto max-w-6xl py-8 text-white">
       <div className="rounded-3xl border border-emerald-500/30 bg-black/75 p-6 shadow-xl sm:p-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>

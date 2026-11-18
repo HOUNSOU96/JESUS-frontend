@@ -150,7 +150,7 @@ const Documents: React.FC = () => {
   const hasPending = requests.some((item) => item.status === "pending");
 
   return (
-    <section className="mx-auto max-w-4xl py-8 text-white">
+    <section className="theme-adaptive mx-auto max-w-4xl py-8 text-white">
       <div className="rounded-3xl border border-yellow-500/30 bg-black/75 p-6 shadow-xl sm:p-8">
         <h1 className="mb-2 text-2xl font-bold text-yellow-300 sm:text-3xl">
           📘 Mon document personnel

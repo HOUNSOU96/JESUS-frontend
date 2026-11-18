@@ -193,7 +193,7 @@ const MonProfil: React.FC = () => {
     [profile.prenom, profile.nom].filter(Boolean).join(" ") || "Membre";
 
   return (
-    <div className="relative mx-auto w-full max-w-6xl space-y-7 pb-12 pt-7 sm:pt-10">
+    <div className="theme-adaptive relative mx-auto w-full max-w-6xl space-y-7 pb-12 pt-7 sm:pt-10">
       {/* Décoration d'arrière-plan */}
       <div className="pointer-events-none absolute left-1/2 top-10 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-amber-400/[0.07] blur-[100px]" />
 

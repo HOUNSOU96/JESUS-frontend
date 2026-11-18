@@ -168,7 +168,7 @@ const MaCarte: React.FC = () => {
   );
 
   return (
-    <div className="mx-auto max-w-6xl py-8 text-white">
+    <div className="theme-adaptive mx-auto max-w-6xl py-8 text-white">
       <div className="mb-8">
         <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-300">
           Confrérie Saint Enfant Jésus

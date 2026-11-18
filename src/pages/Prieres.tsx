@@ -24,7 +24,7 @@ const prayers = [
 
 const Prieres: React.FC = () => {
   return (
-    <div className="relative mx-auto max-w-5xl py-10 sm:py-16">
+    <div className="theme-adaptive relative mx-auto max-w-5xl py-10 sm:py-16">
 
       <div className="pointer-events-none absolute left-1/2 top-20 h-72 w-72
                       -translate-x-1/2 rounded-full bg-amber-400/[0.07] blur-[100px]" />
