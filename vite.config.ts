@@ -13,11 +13,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
+
       includeAssets: [
         'pwa-icon-192.png',
         'pwa-icon-512.png',
         'apple-touch-icon.png'
       ],
+
       manifest: {
         name: 'Confrérie Saint Enfant Jésus Miraculeux de Prague',
         short_name: 'SAINT ENFANT JÉSUS',
@@ -44,18 +46,86 @@ export default defineConfig({
           }
         ]
       },
+
       workbox: {
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'
+        ],
+
+        maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
+
         clientsClaim: true,
         cleanupOutdatedCaches: true,
-        navigateFallback: 'index.html'
+        navigateFallback: 'index.html',
+
+        navigateFallbackDenylist: [
+          /^\/api\//
+        ],
+
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.origin === self.location.origin &&
+              /^\/sounds\/[^/]+\.mp3$/i.test(url.pathname),
+
+            handler: 'CacheFirst',
+
+            options: {
+              cacheName: 'jesus-musiques-v2',
+
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 90
+              },
+
+              cacheableResponse: {
+                statuses: [200]
+              },
+
+              rangeRequests: true
+            }
+          },
+
+          {
+            urlPattern: ({ url }) =>
+              url.origin === self.location.origin &&
+              /^\/audios\/prieres\/.+\.mp3$/i.test(url.pathname),
+
+            handler: 'CacheFirst',
+
+            options: {
+              cacheName: 'jesus-prieres-v2',
+
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 180
+              },
+
+              cacheableResponse: {
+                statuses: [200]
+              },
+
+              rangeRequests: true
+            }
+          },
+
+          {
+            urlPattern: ({ url }) =>
+              /^\/api\//.test(url.pathname),
+
+            handler: 'NetworkOnly'
+          }
+        ]
       }
     })
   ],
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+
   server: {
     fs: {
       strict: true,
