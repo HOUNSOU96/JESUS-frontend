@@ -128,11 +128,47 @@ export function OperationProgressProvider({
             </p>
 
             {isLoading && (
-              <div className="mt-7 h-1.5 overflow-hidden rounded-full
-                              bg-white/10">
-                <div className="h-full w-1/3 animate-[progress_1.5s_ease-in-out_infinite]
-                                rounded-full bg-gradient-to-r
-                                from-amber-600 via-yellow-300 to-amber-500" />
+              <div className="mt-8">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full
+                                       animate-ping rounded-full bg-amber-300
+                                       opacity-60" />
+                      <span className="relative inline-flex h-2 w-2
+                                       rounded-full bg-amber-400" />
+                    </span>
+                    <span className="text-[9px] font-extrabold uppercase
+                                     tracking-[0.24em] text-amber-200/80">
+                      Opération en cours
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase
+                                   tracking-widest text-white/30">
+                    Veuillez patienter
+                  </span>
+                </div>
+
+                <div className="relative h-3 overflow-hidden rounded-full
+                                border border-amber-300/25 bg-black/70
+                                p-[2px] shadow-[inset_0_2px_5px_rgba(0,0,0,0.8)]">
+                  <div className="relative h-full w-full overflow-hidden
+                                  rounded-full bg-amber-950/50">
+                    <div className="absolute inset-y-0 w-2/5 rounded-full
+                                    animate-[progress_1.8s_cubic-bezier(0.4,0,0.2,1)_infinite]
+                                    bg-gradient-to-r from-amber-700 via-yellow-200
+                                    to-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.75)]">
+                      <div className="absolute inset-0 animate-[shimmer_1.2s_linear_infinite]
+                                      bg-gradient-to-r from-transparent
+                                      via-white/60 to-transparent" />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-2 text-center text-[9px] tracking-wide
+                              text-white/30">
+                  Merci de ne pas fermer cette fenêtre.
+                </p>
               </div>
             )}
 
@@ -162,8 +198,13 @@ export function OperationProgressProvider({
 
       <style>{`
         @keyframes progress {
+          0% { transform: translateX(-110%); }
+          100% { transform: translateX(260%); }
+        }
+
+        @keyframes shimmer {
           0% { transform: translateX(-120%); }
-          100% { transform: translateX(320%); }
+          100% { transform: translateX(250%); }
         }
       `}</style>
     </ProgressContext.Provider>

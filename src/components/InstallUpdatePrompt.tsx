@@ -95,6 +95,11 @@ export default function InstallUpdatePrompt() {
       return;
     }
 
+    progress.start(
+      "Installation de JESUS",
+      "Préparation de la demande d'installation. Veuillez patienter..."
+    );
+
     try {
       await installEvent.prompt();
       const choice = await installEvent.userChoice;
@@ -110,6 +115,9 @@ export default function InstallUpdatePrompt() {
       }
     } catch (error) {
       console.error("Erreur installation PWA :", error);
+      progress.error(
+        "Une erreur est survenue pendant la demande d'installation. Vous pouvez réessayer ou consulter les instructions."
+      );
       setShowHelp(true);
     }
   };
