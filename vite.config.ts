@@ -13,21 +13,33 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['pwa-icon.svg'],
+      includeAssets: [
+        'pwa-icon-192.png',
+        'pwa-icon-512.png',
+        'apple-touch-icon.png'
+      ],
       manifest: {
         name: 'Confrérie Saint Enfant Jésus Miraculeux de Prague',
         short_name: 'SAINT ENFANT JÉSUS',
         description: 'Application officielle de la Confrérie Saint Enfant Jésus.',
+        lang: 'fr',
         theme_color: '#17130b',
         background_color: '#090909',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        scope: '/',
         icons: [
           {
-            src: '/pwa-icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: '/pwa-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any'
           }
         ]

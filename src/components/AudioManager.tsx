@@ -400,6 +400,30 @@ const AudioManager: React.FC = () => {
       });
   };
 
+  // Commandes reçues depuis le menu de l'application.
+  useEffect(() => {
+    const toggle = () => handleToggleAudio();
+    const requestState = () => {
+      window.dispatchEvent(new CustomEvent("jesus-audio-state", {
+        detail: { isPlaying, ready, notification },
+      }));
+    };
+
+    window.addEventListener("jesus-audio-toggle", toggle);
+    window.addEventListener("jesus-audio-request-state", requestState);
+
+    return () => {
+      window.removeEventListener("jesus-audio-toggle", toggle);
+      window.removeEventListener("jesus-audio-request-state", requestState);
+    };
+  }, [isPlaying, ready, notification]);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("jesus-audio-state", {
+      detail: { isPlaying, ready, notification },
+    }));
+  }, [isPlaying, ready, notification]);
+
   const path = location.pathname.toLowerCase();
 
   const isAutoStartPage =
@@ -414,32 +438,7 @@ const AudioManager: React.FC = () => {
     return null;
   }
 
-  return (
-    <div className="fixed bottom-4 right-4 z-[9999] bg-white/95 dark:bg-gray-800 rounded-xl shadow-lg p-3 flex flex-col items-center gap-2 w-[190px]">
-
-      <button
-        type="button"
-        onClick={handleToggleAudio}
-        className="w-full text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg transition"
-      >
-        {isPlaying ? "⏸ Pause" : "🔊 Allumer"}
-      </button>
-
-      <div className="text-[11px] text-gray-600 dark:text-gray-300 text-center">
-        {isPlaying
-          ? "Lecture en cours..."
-          : ready
-          ? "Musique en pause."
-          : "Préparation du lecteur audio..."}
-      </div>
-
-      {notification && (
-        <div className="text-xs text-center text-orange-600 dark:text-orange-300 break-words">
-          {notification}
-        </div>
-      )}
-    </div>
-  );
+  return null;
 };
 
 export default AudioManager;

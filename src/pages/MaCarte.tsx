@@ -33,14 +33,15 @@ const MaCarte: React.FC = () => {
   const [city, setCity] = useState("");
   const [dateNaissance, setDateNaissance] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
-  const [signature, setSignature] = useState<File | null>(null);
+  const [hasSignature, setHasSignature] = useState(false);
+  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const signatureRef = useRef<HTMLInputElement>(null);
 
   const loadCards = async () => {
     try {
@@ -70,6 +71,72 @@ const MaCarte: React.FC = () => {
   const hasPending = cards.some((card) => card.status === "pending");
   const hasValid = cards.some((card) => card.status === "approved");
 
+  const getSignaturePosition = (
+    event: React.PointerEvent<HTMLCanvasElement>
+  ) => {
+    const canvas = signatureCanvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+      x: (event.clientX - rect.left) * (canvas.width / rect.width),
+      y: (event.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const startSignatureDrawing = (
+    event: React.PointerEvent<HTMLCanvasElement>
+  ) => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas || sending || hasPending || hasValid) return;
+
+    event.preventDefault();
+    canvas.setPointerCapture(event.pointerId);
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const point = getSignaturePosition(event);
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#14233d";
+
+    drawingRef.current = true;
+    setHasSignature(true);
+  };
+
+  const continueSignatureDrawing = (
+    event: React.PointerEvent<HTMLCanvasElement>
+  ) => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas || !drawingRef.current) return;
+
+    event.preventDefault();
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const point = getSignaturePosition(event);
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+  };
+
+  const stopSignatureDrawing = () => {
+    drawingRef.current = false;
+  };
+
+  const clearSignature = () => {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) return;
+
+    canvas.getContext("2d")?.clearRect(
+      0, 0, canvas.width, canvas.height
+    );
+    setHasSignature(false);
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
@@ -97,8 +164,11 @@ const MaCarte: React.FC = () => {
     form.append("date_naissance", dateNaissance);
     form.append("photo", photo);
 
-    if (signature) {
-      form.append("signature", signature);
+    if (hasSignature && signatureCanvasRef.current) {
+      form.append(
+        "signature_data",
+        signatureCanvasRef.current.toDataURL("image/png")
+      );
     }
 
     setSending(true);
@@ -115,11 +185,10 @@ const MaCarte: React.FC = () => {
       setMessage(confirmation);
       progress.success(confirmation);
       setPhoto(null);
-      setSignature(null);
+      clearSignature();
       setCity("");
       setDateNaissance("");
       if (inputRef.current) inputRef.current.value = "";
-      if (signatureRef.current) signatureRef.current.value = "";
       await loadCards();
     } catch (err: any) {
       const message =
@@ -297,32 +366,41 @@ const MaCarte: React.FC = () => {
 
             <div>
               <label className="mb-2 block text-sm font-semibold">
-                Signature du membre (facultative)
+                Signature électronique du membre (facultative)
               </label>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-white/5 p-5 text-center transition hover:bg-white/10">
-                <span className="text-2xl text-amber-300">✍</span>
-                <span className="mt-2 text-sm font-bold">
-                  Ajouter ma signature
-                </span>
-                <span className="mt-1 text-xs text-white/50">
-                  JPG, PNG ou WebP — maximum 2 Mo
-                </span>
-                <input
-                  ref={signatureRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) =>
-                    setSignature(e.target.files?.[0] || null)
-                  }
-                  disabled={hasPending || hasValid}
+
+              <div className="overflow-hidden rounded-2xl border-2 border-dashed border-amber-300/50 bg-white">
+                <canvas
+                  ref={signatureCanvasRef}
+                  width={1200}
+                  height={360}
+                  className="block h-auto w-full touch-none"
+                  onPointerDown={startSignatureDrawing}
+                  onPointerMove={continueSignatureDrawing}
+                  onPointerUp={stopSignatureDrawing}
+                  onPointerCancel={stopSignatureDrawing}
+                  onPointerLeave={stopSignatureDrawing}
                 />
-              </label>
-              {signature && (
-                <p className="mt-2 text-xs text-green-300">
-                  Signature : {signature.name}
-                </p>
-              )}
+              </div>
+
+              <p className="mt-2 text-xs text-white/50">
+                Dessinez votre signature avec votre doigt sur téléphone
+                ou avec votre souris sur ordinateur.
+              </p>
+
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span className="text-xs text-white/60">
+                  {hasSignature ? "Signature dessinée" : "Aucune signature dessinée"}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearSignature}
+                  disabled={!hasSignature || sending || hasPending || hasValid}
+                  className="rounded-xl border border-white/20 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/10 disabled:opacity-40"
+                >
+                  Effacer
+                </button>
+              </div>
             </div>
 
             <div className="rounded-xl bg-amber-300/10 p-4 text-xs leading-5 text-amber-100/80">

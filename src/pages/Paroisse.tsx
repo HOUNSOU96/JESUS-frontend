@@ -348,6 +348,83 @@ const Paroisse: React.FC = () => {
     </motion.article>
   );
 
+  const renderResponsibleGroup = (
+    leaders: DiocesanResponsible[],
+    groupName: string
+  ) => {
+    if (leaders.length === 0) return null;
+
+    const principal =
+      leaders.find((leader) => leader.is_primary) || leaders[0];
+
+    const autres = leaders.filter(
+      (leader) => leader.id !== principal.id
+    );
+
+    return (
+      <div className="space-y-6">
+        <motion.article
+          key={`${groupName}-${principal.id}`}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="gold-frame gold-corner overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-yellow-100 p-4 shadow-xl dark:from-gray-900 dark:via-gray-900 dark:to-amber-950/30 sm:p-6"
+        >
+          <div className="grid items-center gap-6 md:grid-cols-2">
+            <div className="relative h-[65vh] min-h-[340px] max-h-[680px] w-full overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 shadow-xl dark:bg-gray-800">
+              <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-amber-700 dark:text-amber-300">
+                {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
+              </div>
+              {principal.photo_url && (
+                <img
+                  src={principal.photo_url}
+                  alt={`Portrait de ${principal.prenom} ${principal.nom}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              )}
+            </div>
+
+            <div className="px-2 py-5 text-center md:text-left">
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                Confrérie Saint Enfant Jésus
+              </p>
+              <h3 className="mt-4 break-words text-3xl font-black text-gray-900 dark:text-white sm:text-4xl">
+                {principal.prenom} {principal.nom}
+              </h3>
+              <p className="mt-3 text-xl font-bold text-amber-700 dark:text-amber-300">
+                {principal.role_name}
+              </p>
+              {principal.effective_from && (
+                <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+                  Prise d’effet : {formatResponsibilityDate(principal.effective_from)}
+                </p>
+              )}
+              {principal.ended_at && (
+                <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                  Fin de responsabilité : {formatResponsibilityDate(principal.ended_at)}
+                </p>
+              )}
+              <span className="mt-5 inline-flex rounded-full bg-amber-100 px-4 py-2 text-xs font-bold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+                ★ Responsable principal
+              </span>
+            </div>
+          </div>
+        </motion.article>
+
+        {autres.length > 0 && (
+          <div>
+            <h4 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+              Autres membres du bureau
+            </h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {autres.map(renderResponsibleCard)}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ============================================================
   // AFFICHAGE
   // ============================================================
@@ -383,7 +460,123 @@ const Paroisse: React.FC = () => {
           </p>
         </header>
 
-        {/* INDICATEURS */}
+        {/* RESPONSABLES */}
+
+        <section>
+          <div className="mb-7">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              👥 Responsables du diocèse
+            </h2>
+            <p className="mt-2 text-sm text-gray-300">
+              Les personnes chargées de l'organisation et de
+              l'accompagnement des communautés.
+            </p>
+          </div>
+
+          {/* CHARGEMENT */}
+
+          {loadingResponsables && (
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
+              <p className="mt-4 text-gray-200">
+                Chargement des responsables...
+              </p>
+            </div>
+          )}
+
+          {/* ERREUR */}
+
+          {!loadingResponsables && errorResponsables && (
+            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-6 text-center">
+              <p className="font-semibold text-red-200">
+                {errorResponsables}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setRetryCount((count) => count + 1)}
+                className="mt-4 rounded-xl bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700 transition"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
+
+          {/* LISTE */}
+
+          {!loadingResponsables &&
+            !errorResponsables &&
+            responsables.length > 0 && (
+              <div className="space-y-10">
+
+                {/* RESPONSABLES DIOCÉSAINS */}
+
+                {responsablesDiocesains.length > 0 && (
+                  <div>
+                    <div className="mb-5 flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-xl">
+                        ⛪
+                      </span>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          Responsabilité diocésaine
+                        </h3>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {responsablesDiocesains.length} responsable(s)
+                        </p>
+                      </div>
+                    </div>
+
+{renderResponsibleGroup(responsablesDiocesains, "diocese")}
+                  </div>
+                )}
+
+                {/* RESPONSABLES PAROISSIAUX */}
+
+                {Object.entries(groupesParoissiaux).map(
+                  ([parish, leaders]) => (
+                    <div key={parish}>
+                      <div className="mb-5 flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/20 text-xl">
+                          🏛️
+                        </span>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                            {parish}
+                          </h3>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {leaders.length} responsable(s)
+                          </p>
+                        </div>
+                      </div>
+
+{renderResponsibleGroup(leaders, parish)}
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+          {/* AUCUN RESPONSABLE */}
+
+          {!loadingResponsables &&
+            !errorResponsables &&
+            responsables.length === 0 && (
+              <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+                <div className="text-5xl mb-4">👥</div>
+                <h3 className="font-bold text-white">
+                  Aucun responsable enregistré
+                </h3>
+                <p className="mt-2 text-sm text-gray-300">
+                  Aucun responsable actif n'est actuellement affecté à ce diocèse.
+                </p>
+              </div>
+            )}
+
+
+        </section>
+
+                {/* INDICATEURS */}
 
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
           <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center backdrop-blur-sm dark:bg-gray-900/85">
@@ -462,123 +655,6 @@ const Paroisse: React.FC = () => {
           )}
         </section>
 
-        {/* RESPONSABLES */}
-
-        <section>
-          <div className="mb-7">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              👥 Responsables du diocèse
-            </h2>
-            <p className="mt-2 text-sm text-gray-300">
-              Les personnes chargées de l'organisation et de
-              l'accompagnement des communautés.
-            </p>
-          </div>
-
-          {/* CHARGEMENT */}
-
-          {loadingResponsables && (
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
-              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
-              <p className="mt-4 text-gray-200">
-                Chargement des responsables...
-              </p>
-            </div>
-          )}
-
-          {/* ERREUR */}
-
-          {!loadingResponsables && errorResponsables && (
-            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-6 text-center">
-              <p className="font-semibold text-red-200">
-                {errorResponsables}
-              </p>
-
-              <button
-                type="button"
-                onClick={() => setRetryCount((count) => count + 1)}
-                className="mt-4 rounded-xl bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700 transition"
-              >
-                Réessayer
-              </button>
-            </div>
-          )}
-
-          {/* LISTE */}
-
-          {!loadingResponsables &&
-            !errorResponsables &&
-            responsables.length > 0 && (
-              <div className="space-y-10">
-
-                {/* RESPONSABLES DIOCÉSAINS */}
-
-                {responsablesDiocesains.length > 0 && (
-                  <div>
-                    <div className="mb-5 flex items-center gap-3">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-xl">
-                        ⛪
-                      </span>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                          Responsabilité diocésaine
-                        </h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {responsablesDiocesains.length} responsable(s)
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                      {responsablesDiocesains.map(renderResponsibleCard)}
-                    </div>
-                  </div>
-                )}
-
-                {/* RESPONSABLES PAROISSIAUX */}
-
-                {Object.entries(groupesParoissiaux).map(
-                  ([parish, leaders]) => (
-                    <div key={parish}>
-                      <div className="mb-5 flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/20 text-xl">
-                          🏛️
-                        </span>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                            {parish}
-                          </h3>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {leaders.length} responsable(s)
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {leaders.map(renderResponsibleCard)}
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-
-          {/* AUCUN RESPONSABLE */}
-
-          {!loadingResponsables &&
-            !errorResponsables &&
-            responsables.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
-                <div className="text-5xl mb-4">👥</div>
-                <h3 className="font-bold text-white">
-                  Aucun responsable enregistré
-                </h3>
-                <p className="mt-2 text-sm text-gray-300">
-                  Aucun responsable actif n'est actuellement affecté à ce diocèse.
-                </p>
-              </div>
-            )}
-        </section>
       </div>
     </motion.main>
   );

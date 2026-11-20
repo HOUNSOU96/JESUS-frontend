@@ -411,24 +411,6 @@ const Inscrits: React.FC = () => {
         </div>
       </section>
 
-      {/* STATISTIQUES */}
-
-      <section className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatCard
-          label="Membres enregistrés"
-          value={inscrits.length}
-          icon="👥"
-          description="Membres retournés par le service paroissial."
-        />
-
-        <StatCard
-          label="Responsables paroissiaux"
-          value={responsables.length}
-          icon="⛪"
-          description="Responsables associés à cette paroisse."
-        />
-      </section>
-
       {/* RESPONSABLES */}
 
       <section className="mb-12">
@@ -466,7 +448,7 @@ const Inscrits: React.FC = () => {
           <div className="space-y-6">
             {/* PROFIL PRINCIPAL : PREMIER RESPONSABLE */}
             {(() => {
-              const principal = responsables[0];
+              const principal = responsables.find((r) => r.is_primary) || responsables[0];
 
               return (
                 <motion.article
@@ -477,10 +459,10 @@ const Inscrits: React.FC = () => {
                 >
                   <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl" />
 
-                  <div className="relative z-10 grid items-center gap-7 md:grid-cols-[220px_1fr]">
-                    <div className="mx-auto w-full max-w-[220px] text-center">
+                  <div className="relative z-10 grid items-center gap-7 md:grid-cols-2">
+                    <div className="mx-auto w-full max-w-none text-center">
                       <div
-                        className={`relative mx-auto h-48 w-48 overflow-hidden rounded-full border-4 border-amber-400 bg-amber-100 shadow-2xl ring-8 ring-amber-400/10 dark:bg-gray-800 sm:h-52 sm:w-52 ${principal.photo_url ? "cursor-zoom-in" : ""}`}
+                        className={`relative mx-auto h-[65vh] min-h-[340px] max-h-[680px] w-full overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 shadow-2xl ring-8 ring-amber-400/10 dark:bg-gray-800 ${principal.photo_url ? "cursor-zoom-in" : ""}`}
                         onClick={() => principal.photo_url && window.open(principal.photo_url, "_blank", "noopener,noreferrer")}
                         title={principal.photo_url ? "Cliquer pour agrandir la photo" : undefined}
                       >
@@ -555,7 +537,7 @@ const Inscrits: React.FC = () => {
                 </h3>
 
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  {responsables.slice(1).map((responsable, index) => (
+                  {responsables.filter((r) => r.id !== (responsables.find((item) => item.is_primary) || responsables[0]).id).map((responsable, index) => (
                     <motion.article
                       key={responsable.id}
                       className="gold-frame relative overflow-hidden rounded-2xl bg-white/90 p-5 shadow-lg transition duration-300 hover:-translate-y-1 dark:bg-gray-900/90"
@@ -598,6 +580,26 @@ const Inscrits: React.FC = () => {
             )}
           </div>
         )}
+
+
+      </section>
+
+              {/* STATISTIQUES */}
+
+      <section className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard
+          label="Membres enregistrés"
+          value={inscrits.length}
+          icon="👥"
+          description="Membres retournés par le service paroissial."
+        />
+
+        <StatCard
+          label="Responsables paroissiaux"
+          value={responsables.length}
+          icon="⛪"
+          description="Responsables associés à cette paroisse."
+        />
       </section>
 
       {/* MEMBRES */}

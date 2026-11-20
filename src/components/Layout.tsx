@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
 import { useExitNotifier } from "@/hooks/useExitNotifier";
 import api from "@/utils/axios";
 import BackgroundSlideshow from "@/components/BackgroundSlideshow";
-import ChaplainSignatureGate from "@/components/ChaplainSignatureGate";
 import ProfilePhotoEditor from "@/components/ProfilePhotoEditor";
 import InstallUpdatePrompt from "@/components/InstallUpdatePrompt";
 
@@ -16,6 +15,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [audioStatus, setAudioStatus] = useState({
+    isPlaying: false,
+    ready: false,
+    notification: "",
+  });
+
+  useEffect(() => {
+    const updateAudioStatus = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail) setAudioStatus(detail);
+    };
+    window.addEventListener("jesus-audio-state", updateAudioStatus);
+    return () => window.removeEventListener("jesus-audio-state", updateAudioStatus);
+  }, []);
+
+  useEffect(() => {
+    if (menuOpen) {
+      window.dispatchEvent(new Event("jesus-audio-request-state"));
+    }
+  }, [menuOpen]);
 
   useExitNotifier({ eventType: "connect" });
   useExitNotifier({ eventType: "disconnect" });
@@ -104,7 +123,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <BackgroundSlideshow />
       <InstallUpdatePrompt />
 
-      {user && <ChaplainSignatureGate />}
 
       <main className="relative z-20 flex-grow pb-28 px-4 sm:px-6 lg:px-12">
         {children}
@@ -137,7 +155,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {user && menuOpen && (
         <div
           className="fixed inset-0 z-[60] flex items-end justify-center
-                     bg-black/85 px-3 pb-24 pt-6 backdrop-blur-md
+                     bg-black/55 px-3 pb-24 pt-6 backdrop-blur-md
+                     dark:bg-black/85
                      sm:items-center sm:pb-6"
           onClick={() => setMenuOpen(false)}
           role="presentation"
@@ -147,21 +166,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             aria-modal="true"
             aria-labelledby="jesus-menu-title"
             className="relative w-full max-w-md max-h-[78vh] overflow-y-auto
-                       rounded-[2rem] border border-amber-300/40
-                       bg-gradient-to-b from-[#17130b] via-[#090909]
-                       to-black p-5 shadow-[0_25px_90px_rgba(0,0,0,0.8)]
-                       shadow-amber-900/20 backdrop-blur-2xl sm:p-6"
+                       rounded-[2rem] border border-amber-400/50
+                       bg-gradient-to-b from-amber-50 via-white to-amber-100
+                       p-5 text-gray-900 shadow-[0_25px_90px_rgba(0,0,0,0.35)]
+                       backdrop-blur-2xl dark:border-amber-300/40
+                       dark:from-[#17130b] dark:via-[#090909] dark:to-black
+                       dark:text-white dark:shadow-[0_25px_90px_rgba(0,0,0,0.8)]
+                       dark:shadow-amber-900/20 sm:p-6"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2
                   id="jesus-menu-title"
-                  className="text-xl font-black tracking-wide text-amber-200"
+                  className="text-xl font-black tracking-wide text-amber-800
+                             dark:text-amber-200"
                 >
                   ☰ Menu
                 </h2>
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                   Confrérie Saint Enfant Jésus
                 </p>
               </div>
@@ -170,17 +193,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 aria-label="Fermer le menu"
-                className="flex h-10 w-10 items-center justify-center
-                           rounded-full border border-amber-300/25
-                           bg-white/5 text-xl text-amber-100/70 transition
-                           hover:border-red-400/60 hover:bg-red-500/15
-                           hover:text-red-300"
+                className="flex h-11 w-11 items-center justify-center
+                           rounded-full border border-red-300/60
+                           bg-red-100 text-2xl font-bold text-red-700
+                           shadow-sm transition hover:bg-red-200
+                           dark:border-red-400/40 dark:bg-red-500/15
+                           dark:text-red-300 dark:hover:bg-red-500/30"
               >
                 ✕
               </button>
             </div>
 
             <nav className="space-y-3">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("jesus-audio-toggle"))}
+                className={menuLinkClass}
+              >
+                <span className="text-xl">
+                  {audioStatus.isPlaying ? "⏸️" : "🔊"}
+                </span>
+                <span className="flex-1">
+                  {audioStatus.isPlaying
+                    ? "Mettre la musique en pause"
+                    : "Reprendre la musique"}
+                  <span className="mt-1 block text-xs font-normal text-amber-200/70">
+                    {audioStatus.isPlaying
+                      ? "Lecture en cours"
+                      : audioStatus.ready
+                        ? "Musique en pause"
+                        : "Lecteur audio en préparation"}
+                  </span>
+                  {audioStatus.notification && (
+                    <span className="mt-1 block text-xs font-normal text-orange-300">
+                      {audioStatus.notification}
+                    </span>
+                  )}
+                </span>
+              </button>
              <Link
                to="/mon-profil"
                onClick={() => setMenuOpen(false)}
@@ -218,9 +268,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               {isAdmin && (
                 <>
-                  <div className="border-t border-yellow-500/20 pt-4">
+                  <div className="border-t border-amber-500/30 pt-4 dark:border-yellow-500/20">
                     <p className="mb-3 text-xs font-bold uppercase
-                                  tracking-wider text-yellow-500">
+                                  tracking-wider text-amber-800 dark:text-yellow-500">
                       Administration
                     </p>
 
@@ -247,9 +297,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </>
               )}
 
-              <div className="border-t border-yellow-500/20 pt-4">
+              <div className="border-t border-amber-500/30 pt-4 dark:border-yellow-500/20">
                 <p className="mb-3 text-xs font-bold uppercase
-                              tracking-wider text-yellow-500">
+                              tracking-wider text-amber-800 dark:text-yellow-500">
                   Mon profil
                 </p>
                 <div className="rounded-2xl border border-amber-300/20

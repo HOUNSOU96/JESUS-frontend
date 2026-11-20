@@ -200,85 +200,6 @@ const Pays: React.FC = () => {
           <div className="gold-divider" />
         </header>
 
-        {/* INDICATEURS */}
-
-        <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-          <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
-            <div className="text-3xl mb-2">🏛️</div>
-            <p className="text-3xl font-extrabold text-white">
-              {dioceses.length}
-            </p>
-            <p className="mt-1 text-sm text-gray-300">
-              {dioceses.length > 1 ? "Diocèses" : "Diocèse"}
-            </p>
-          </div>
-
-          <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
-            <div className="text-3xl mb-2">👥</div>
-            <p className="text-3xl font-extrabold text-white">
-              {loading ? "…" : responsables.length}
-            </p>
-            <p className="mt-1 text-sm text-gray-300">
-              Responsables nationaux
-            </p>
-          </div>
-        </div>
-
-        {/* DIOCÈSES */}
-
-        <section className="mb-16">
-          <div className="mb-8 text-center">
-            <h2 className="text-2xl sm:text-3xl font-extrabold">
-              🏛️ Les diocèses
-            </h2>
-            <p className="mt-2 text-sm text-gray-300">
-              Sélectionnez un diocèse pour découvrir ses paroisses.
-            </p>
-          </div>
-
-          {dioceses.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center">
-              <div className="text-4xl mb-3">🏛️</div>
-              <p className="text-gray-300">
-                Aucun diocèse enregistré pour ce pays.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {dioceses.map((diocese, index) => (
-                <motion.button
-                  key={diocese.name}
-                  type="button"
-                  onClick={() => handleDioceseClick(diocese.name)}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index * 0.04, 0.3) }}
-                  whileHover={{ y: -5 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="gold-frame gold-corner group flex items-center gap-4 rounded-2xl bg-white/85 p-5 text-left shadow-lg backdrop-blur-sm transition-all hover:bg-amber-50 dark:bg-gray-900/85 dark:hover:bg-gray-800"
-                >
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-500/20 text-3xl transition group-hover:bg-blue-500/30">
-                    🏛️
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-white text-base sm:text-lg">
-                      {diocese.name}
-                    </h3>
-                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                      Consulter les paroisses
-                    </p>
-                  </div>
-
-                  <span className="text-xl text-blue-300 transition-transform group-hover:translate-x-1">
-                    →
-                  </span>
-                </motion.button>
-              ))}
-            </div>
-          )}
-        </section>
-
         {/* RESPONSABLES NATIONAUX */}
 
         <section>
@@ -333,73 +254,193 @@ const Pays: React.FC = () => {
             </div>
           )}
 
-          {/* CARTES DES RESPONSABLES */}
+          {/* RESPONSABLE PRINCIPAL ET AUTRES MEMBRES DU BUREAU */}
 
-          {!loading && !error && responsables.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {responsables.map((responsable, index) => (
+          {!loading && !error && responsables.length > 0 && (() => {
+            const principal =
+              responsables.find((r) => r.is_primary) || responsables[0];
+
+            const autres = responsables.filter(
+              (r) => r.id !== principal.id
+            );
+
+            return (
+              <div className="space-y-7">
                 <motion.article
-                  key={responsable.id}
+                  key={principal.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index * 0.05, 0.35) }}
-                  className={`gold-frame gold-corner relative overflow-hidden rounded-2xl bg-white/90 p-5 shadow-lg backdrop-blur-sm transition dark:bg-gray-900/90 ${responsable.is_primary ? "ring-2 ring-amber-400/50" : ""}`}
+                  className="gold-frame gold-corner overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-yellow-100 p-4 shadow-xl dark:from-gray-900 dark:via-gray-900 dark:to-amber-950/30 sm:p-6"
                 >
-                  <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-blue-500/10" />
-
-                  <div className="relative flex items-center gap-4">
-                    <UserAvatar
-                      photoUrl={responsable.photo_url}
-                      name={`${responsable.prenom} ${responsable.nom}`}
-                    />
-
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-gray-900 dark:text-white font-bold text-base sm:text-lg break-words">
-                        {responsable.prenom} {responsable.nom}
-                      </h3>
-
-                      <p className="mt-1 text-sm font-semibold text-amber-700 dark:text-amber-300">
-                        {responsable.role_name}
-                      </p>
-
-                      {responsable.effective_from && (
-                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                          Prise d’effet : {formatResponsibilityDate(responsable.effective_from)}
-                        </p>
-                      )}
-
-                      {responsable.ended_at && (
-                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                          Fin de responsabilité : {formatResponsibilityDate(responsable.ended_at)}
-                        </p>
-                      )}
-
-                      {responsable.matricule && (
-                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                          Matricule : {responsable.matricule}
-                        </p>
+                  <div className="grid items-center gap-6 md:grid-cols-2">
+                    <div className="relative h-[65vh] min-h-[340px] max-h-[680px] w-full overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 shadow-xl dark:bg-gray-800">
+                      <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-amber-700 dark:text-amber-300">
+                        {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
+                      </div>
+                      {principal.photo_url && (
+                        <img
+                          src={principal.photo_url}
+                          alt={`Portrait de ${principal.prenom} ${principal.nom}`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
                       )}
                     </div>
-                  </div>
 
-                  <div className="relative mt-5 flex flex-wrap items-center gap-2">
-                    {responsable.is_primary && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
-                        ✓ Premier responsable
+                    <div className="px-2 py-5 text-center md:text-left">
+                      <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                        Confrérie Saint Enfant Jésus
+                      </p>
+                      <h3 className="mt-4 break-words text-3xl font-black text-gray-900 dark:text-white sm:text-4xl">
+                        {principal.prenom} {principal.nom}
+                      </h3>
+                      <p className="mt-3 text-xl font-bold text-amber-700 dark:text-amber-300">
+                        {principal.role_name}
+                      </p>
+                      {principal.matricule && (
+                        <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
+                          Matricule : {principal.matricule}
+                        </p>
+                      )}
+                      {principal.effective_from && (
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                          Prise d’effet : {formatResponsibilityDate(principal.effective_from)}
+                        </p>
+                      )}
+                      {principal.ended_at && (
+                        <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                          Fin de responsabilité : {formatResponsibilityDate(principal.ended_at)}
+                        </p>
+                      )}
+                      <span className="mt-5 inline-flex rounded-full border border-amber-400/40 bg-amber-100 px-4 py-2 text-xs font-bold text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+                        ★ Responsable national principal
                       </span>
-                    )}
-
-                    {responsable.statut && (
-                      <span className="rounded-full border border-blue-400/30 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-800 dark:bg-blue-500/15 dark:text-blue-200">
-                        {responsable.statut}
-                      </span>
-                    )}
+                    </div>
                   </div>
                 </motion.article>
+
+                {autres.length > 0 && (
+                  <div>
+                    <h3 className="mb-5 text-xl font-extrabold text-gray-900 dark:text-white">
+                      Autres membres du bureau national
+                    </h3>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      {autres.map((responsable, index) => (
+                        <motion.article
+                          key={responsable.id}
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="gold-frame flex items-center gap-4 rounded-2xl bg-white/90 p-5 shadow-lg dark:bg-gray-900/90"
+                        >
+                          <UserAvatar
+                            photoUrl={responsable.photo_url}
+                            name={`${responsable.prenom} ${responsable.nom}`}
+                          />
+                          <div className="min-w-0">
+                            <h4 className="break-words font-bold text-gray-900 dark:text-white">
+                              {responsable.prenom} {responsable.nom}
+                            </h4>
+                            <p className="mt-1 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                              {responsable.role_name}
+                            </p>
+                            {responsable.matricule && (
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Matricule : {responsable.matricule}
+                              </p>
+                            )}
+                          </div>
+                        </motion.article>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+
+        </section>
+
+{/* INDICATEURS */}
+
+        <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
+            <div className="text-3xl mb-2">🏛️</div>
+            <p className="text-3xl font-extrabold text-white">
+              {dioceses.length}
+            </p>
+            <p className="mt-1 text-sm text-gray-300">
+              {dioceses.length > 1 ? "Diocèses" : "Diocèse"}
+            </p>
+          </div>
+
+          <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
+            <div className="text-3xl mb-2">👥</div>
+            <p className="text-3xl font-extrabold text-white">
+              {loading ? "…" : responsables.length}
+            </p>
+            <p className="mt-1 text-sm text-gray-300">
+              Responsables nationaux
+            </p>
+          </div>
+        </div>
+
+                        {/* DIOCÈSES */}
+
+        <section className="mb-16">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl sm:text-3xl font-extrabold">
+              🏛️ Les diocèses
+            </h2>
+            <p className="mt-2 text-sm text-gray-300">
+              Sélectionnez un diocèse pour découvrir ses paroisses.
+            </p>
+          </div>
+
+          {dioceses.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center">
+              <div className="text-4xl mb-3">🏛️</div>
+              <p className="text-gray-300">
+                Aucun diocèse enregistré pour ce pays.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {dioceses.map((diocese, index) => (
+                <motion.button
+                  key={diocese.name}
+                  type="button"
+                  onClick={() => handleDioceseClick(diocese.name)}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.04, 0.3) }}
+                  whileHover={{ y: -5 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="gold-frame gold-corner group flex items-center gap-4 rounded-2xl bg-white/85 p-5 text-left shadow-lg backdrop-blur-sm transition-all hover:bg-amber-50 dark:bg-gray-900/85 dark:hover:bg-gray-800"
+                >
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-500/20 text-3xl transition group-hover:bg-blue-500/30">
+                    🏛️
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-white text-base sm:text-lg">
+                      {diocese.name}
+                    </h3>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                      Consulter les paroisses
+                    </p>
+                  </div>
+
+                  <span className="text-xl text-blue-300 transition-transform group-hover:translate-x-1">
+                    →
+                  </span>
+                </motion.button>
               ))}
             </div>
           )}
         </section>
+
       </div>
     </motion.main>
   );
