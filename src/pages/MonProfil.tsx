@@ -13,6 +13,7 @@ type Responsibility = {
 };
 
 type ProfileData = {
+  is_admin?: boolean;
   nom?: string | null;
   prenom?: string | null;
   matricule?: string | null;

@@ -143,9 +143,9 @@ const Pays: React.FC = () => {
   if (!continent || !selectedCountry) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="text-center rounded-3xl border border-white/10 bg-white/10 p-10">
+        <div className="text-center rounded-3xl border border-amber-200 bg-white/90 p-10 text-gray-900 shadow-lg dark:border-white/10 dark:bg-gray-900/90 dark:text-white">
           <div className="text-5xl mb-4">🌍</div>
-          <h2 className="text-xl font-bold text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Pays non trouvé
           </h2>
           <button
@@ -207,7 +207,7 @@ const Pays: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-extrabold">
               👥 Responsables nationaux
             </h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Les personnes chargées des responsabilités nationales.
             </p>
           </div>
@@ -215,9 +215,9 @@ const Pays: React.FC = () => {
           {/* CHARGEMENT */}
 
           {loading && (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/10 py-12">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-amber-200 bg-white/85 py-12 text-gray-900 dark:border-white/10 dark:bg-gray-900/85 dark:text-white">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
-              <p className="mt-4 text-sm text-gray-300">
+              <p className="mt-4 text-sm text-gray-600 dark:text-gray-300">
                 Chargement des responsables...
               </p>
             </div>
@@ -228,7 +228,7 @@ const Pays: React.FC = () => {
           {!loading && error && (
             <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-8 text-center">
               <div className="text-4xl mb-3">⚠️</div>
-              <p className="text-red-200">{error}</p>
+              <p className="text-red-700 dark:text-red-200">{error}</p>
 
               <button
                 type="button"
@@ -243,12 +243,12 @@ const Pays: React.FC = () => {
           {/* AUCUN RESPONSABLE */}
 
           {!loading && !error && responsables.length === 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+            <div className="rounded-2xl border border-amber-200 bg-white/85 p-10 text-center text-gray-900 dark:border-white/10 dark:bg-gray-900/85 dark:text-white">
               <div className="text-5xl mb-4">👥</div>
-              <h3 className="font-bold text-white text-lg">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 Aucun responsable enregistré
               </h3>
-              <p className="mt-2 text-sm text-gray-300">
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                 Aucun responsable national actif n'est actuellement affecté à ce pays.
               </p>
             </div>
@@ -273,19 +273,17 @@ const Pays: React.FC = () => {
                   className="gold-frame gold-corner overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-yellow-100 p-4 shadow-xl dark:from-gray-900 dark:via-gray-900 dark:to-amber-950/30 sm:p-6"
                 >
                   <div className="grid items-center gap-6 md:grid-cols-2">
-                    <div className="relative h-[65vh] min-h-[340px] max-h-[680px] w-full overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 shadow-xl dark:bg-gray-800">
-                      <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-amber-700 dark:text-amber-300">
-                        {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
-                      </div>
-                      {principal.photo_url && (
-                        <img
-                          src={principal.photo_url}
-                          alt={`Portrait de ${principal.prenom} ${principal.nom}`}
-                          className="absolute inset-0 h-full w-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        />
-                      )}
-                    </div>
+                    <UserAvatar
+                      photoUrl={principal.photo_url}
+                      name={`${principal.prenom} ${principal.nom}`}
+                      containerClassName="relative mx-auto flex h-[65vh] min-h-[340px] max-h-[680px] w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 text-6xl font-black text-amber-700 shadow-xl dark:bg-gray-800 dark:text-amber-300"
+                      imageClassName="absolute inset-0 h-full w-full object-cover object-top"
+                      fallback={
+                        <span>
+                          {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
+                        </span>
+                      }
+                    />
 
                     <div className="px-2 py-5 text-center md:text-left">
                       <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
@@ -367,20 +365,20 @@ const Pays: React.FC = () => {
         <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
           <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
             <div className="text-3xl mb-2">🏛️</div>
-            <p className="text-3xl font-extrabold text-white">
+            <p className="text-3xl font-extrabold text-gray-900 dark:text-white">
               {dioceses.length}
             </p>
-            <p className="mt-1 text-sm text-gray-300">
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
               {dioceses.length > 1 ? "Diocèses" : "Diocèse"}
             </p>
           </div>
 
           <div className="gold-frame rounded-2xl bg-white/80 p-5 text-center shadow-lg dark:bg-gray-900/85">
             <div className="text-3xl mb-2">👥</div>
-            <p className="text-3xl font-extrabold text-white">
+            <p className="text-3xl font-extrabold text-gray-900 dark:text-white">
               {loading ? "…" : responsables.length}
             </p>
-            <p className="mt-1 text-sm text-gray-300">
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
               Responsables nationaux
             </p>
           </div>
@@ -393,7 +391,7 @@ const Pays: React.FC = () => {
             <h2 className="text-2xl sm:text-3xl font-extrabold">
               🏛️ Les diocèses
             </h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Sélectionnez un diocèse pour découvrir ses paroisses.
             </p>
           </div>
@@ -424,7 +422,7 @@ const Pays: React.FC = () => {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-white text-base sm:text-lg">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white sm:text-lg">
                       {diocese.name}
                     </h3>
                     <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
@@ -432,7 +430,7 @@ const Pays: React.FC = () => {
                     </p>
                   </div>
 
-                  <span className="text-xl text-blue-300 transition-transform group-hover:translate-x-1">
+                  <span className="text-xl text-blue-600 transition-transform group-hover:translate-x-1 dark:text-blue-300">
                     →
                   </span>
                 </motion.button>

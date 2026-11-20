@@ -267,7 +267,7 @@ const ValidationCartes: React.FC = () => {
 
       {approval && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          className="theme-fixed-dark fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="approval-card-title"
@@ -324,7 +324,7 @@ const ValidationCartes: React.FC = () => {
 
       {rejection && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+          className="theme-fixed-dark fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="rejection-card-title"

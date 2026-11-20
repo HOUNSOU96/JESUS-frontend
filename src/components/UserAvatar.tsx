@@ -3,9 +3,18 @@ import React, { useEffect, useState } from "react";
 interface UserAvatarProps {
   photoUrl?: string | null;
   name: string;
+  containerClassName?: string;
+  imageClassName?: string;
+  fallback?: React.ReactNode;
 }
 
-const UserAvatar: React.FC<UserAvatarProps> = ({ photoUrl, name }) => {
+const UserAvatar: React.FC<UserAvatarProps> = ({
+  photoUrl,
+  name,
+  containerClassName,
+  imageClassName,
+  fallback,
+}) => {
   const [imageFailed, setImageFailed] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -51,27 +60,36 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ photoUrl, name }) => {
             setIsOpen(true);
           }
         }}
-        className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl dark:bg-blue-900 ${
-          hasPhoto ? "cursor-zoom-in transition-transform hover:scale-105" : ""
-        }`}
+        className={
+          containerClassName ||
+          "relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-2xl dark:bg-blue-900"
+        }
+        style={hasPhoto ? { cursor: "zoom-in" } : undefined}
       >
         {hasPhoto ? (
           <img
             src={photoUrl!}
             alt={`Photo de ${name}`}
-            className="absolute inset-0 h-full w-full rounded-full object-cover"
+            className={
+              imageClassName ||
+              "absolute inset-0 h-full w-full rounded-full object-cover object-top"
+            }
             loading="lazy"
             referrerPolicy="no-referrer"
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <span role="img" aria-label="Photo non disponible">👤</span>
+          fallback || (
+            <span role="img" aria-label="Photo non disponible">
+              👤
+            </span>
+          )
         )}
       </div>
 
       {isOpen && hasPhoto && (
         <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-3 backdrop-blur-sm sm:p-6"
           onClick={() => setIsOpen(false)}
           role="dialog"
           aria-modal="true"
@@ -79,23 +97,28 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ photoUrl, name }) => {
         >
           <button
             type="button"
-            onClick={() => setIsOpen(false)}
-            className="absolute right-5 top-5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-3xl text-white transition hover:bg-white/30"
-            aria-label="Fermer"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsOpen(false);
+            }}
+            className="absolute right-4 top-4 z-[100000] flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-black/60 text-4xl font-light leading-none text-white shadow-xl transition hover:scale-110 hover:bg-red-600 focus:outline-none focus:ring-4 focus:ring-white/50 sm:right-7 sm:top-7"
+            aria-label="Fermer la photo"
+            title="Fermer"
           >
             ×
           </button>
 
           <div
-            className="flex max-h-[90vh] max-w-[95vw] flex-col items-center gap-3"
+            className="flex max-h-[94vh] max-w-[96vw] flex-col items-center gap-3"
             onClick={(event) => event.stopPropagation()}
           >
             <img
               src={photoUrl!}
-              alt={`Photo agrandie de ${name}`}
-              className="max-h-[78vh] max-w-[90vw] rounded-xl border-2 border-amber-300 object-contain shadow-2xl"
+              alt={`Photo complète de ${name}`}
+              className="max-h-[84vh] max-w-[94vw] rounded-xl object-contain shadow-2xl"
               referrerPolicy="no-referrer"
             />
+
             <p className="text-center text-lg font-semibold text-white">
               {name}
             </p>

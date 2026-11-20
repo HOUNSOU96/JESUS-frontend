@@ -111,12 +111,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isAdmin = user?.is_admin === true || user?.is_admin === 1;
 
   const menuLinkClass =
-    "group flex w-full items-center gap-3 rounded-2xl border border-amber-300/20 " +
-    "bg-gradient-to-r from-white/[0.07] to-white/[0.02] px-4 py-3.5 " +
-    "text-left text-sm font-semibold text-amber-50 shadow-sm " +
-    "transition duration-300 hover:-translate-y-0.5 hover:border-amber-300/60 " +
-    "hover:from-amber-400/15 hover:to-yellow-500/5 hover:shadow-lg " +
-    "hover:shadow-amber-500/10 active:scale-[0.99]";
+    "group flex w-full items-center gap-3 rounded-2xl border border-amber-300/60 " +
+    "bg-gradient-to-r from-white to-amber-50 px-4 py-3.5 " +
+    "text-left text-sm font-semibold text-amber-950 shadow-sm " +
+    "transition duration-300 hover:-translate-y-0.5 hover:border-amber-400 " +
+    "hover:from-amber-100 hover:to-yellow-100 hover:shadow-lg " +
+    "hover:shadow-amber-500/10 active:scale-[0.99] " +
+    "dark:border-amber-300/20 dark:from-white/[0.07] dark:to-white/[0.02] " +
+    "dark:text-amber-50 dark:hover:border-amber-300/60 " +
+    "dark:hover:from-amber-400/15 dark:hover:to-yellow-500/5";
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col">
@@ -217,7 +220,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {audioStatus.isPlaying
                     ? "Mettre la musique en pause"
                     : "Reprendre la musique"}
-                  <span className="mt-1 block text-xs font-normal text-amber-200/70">
+                  <span className="mt-1 block text-xs font-normal text-amber-800 dark:text-amber-200/70">
                     {audioStatus.isPlaying
                       ? "Lecture en cours"
                       : audioStatus.ready
@@ -225,7 +228,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         : "Lecteur audio en préparation"}
                   </span>
                   {audioStatus.notification && (
-                    <span className="mt-1 block text-xs font-normal text-orange-300">
+                    <span className="mt-1 block text-xs font-normal text-orange-700 dark:text-orange-300">
                       {audioStatus.notification}
                     </span>
                   )}

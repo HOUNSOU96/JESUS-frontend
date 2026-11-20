@@ -212,7 +212,7 @@ const Paroisse: React.FC = () => {
   if (!continent || !selectedCountry) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-xl">
+        <div className="max-w-md w-full text-center rounded-3xl border border-amber-200 bg-white/90 p-8 text-gray-900 shadow-xl dark:border-white/10 dark:bg-gray-900/90 dark:text-white">
           <div className="text-5xl mb-4">🌍</div>
           <h1 className="text-2xl font-bold mb-2">Pays introuvable</h1>
           <p className="text-gray-300 mb-6">
@@ -232,7 +232,7 @@ const Paroisse: React.FC = () => {
 
   if (loadingGeography) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-white">
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-900 dark:text-white">
         <div className="text-center">
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
           <p className="mt-4">Chargement du diocèse et des paroisses...</p>
@@ -244,7 +244,7 @@ const Paroisse: React.FC = () => {
   if (!selectedDiocese) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center rounded-3xl border border-white/10 bg-white/10 p-8 text-white shadow-xl">
+        <div className="max-w-md w-full text-center rounded-3xl border border-amber-200 bg-white/90 p-8 text-gray-900 shadow-xl dark:border-white/10 dark:bg-gray-900/90 dark:text-white">
           <div className="text-5xl mb-4">⛪</div>
           <h1 className="text-2xl font-bold mb-2">Diocèse introuvable</h1>
           <p className="text-gray-300 mb-6">
@@ -370,19 +370,17 @@ const Paroisse: React.FC = () => {
           className="gold-frame gold-corner overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 via-white to-yellow-100 p-4 shadow-xl dark:from-gray-900 dark:via-gray-900 dark:to-amber-950/30 sm:p-6"
         >
           <div className="grid items-center gap-6 md:grid-cols-2">
-            <div className="relative h-[65vh] min-h-[340px] max-h-[680px] w-full overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 shadow-xl dark:bg-gray-800">
-              <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-amber-700 dark:text-amber-300">
-                {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
-              </div>
-              {principal.photo_url && (
-                <img
-                  src={principal.photo_url}
-                  alt={`Portrait de ${principal.prenom} ${principal.nom}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
-                />
-              )}
-            </div>
+            <UserAvatar
+              photoUrl={principal.photo_url}
+              name={`${principal.prenom} ${principal.nom}`}
+              containerClassName="relative mx-auto flex h-[65vh] min-h-[340px] max-h-[680px] w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 text-6xl font-black text-amber-700 shadow-xl dark:bg-gray-800 dark:text-amber-300"
+              imageClassName="absolute inset-0 h-full w-full object-cover object-top"
+              fallback={
+                <span>
+                  {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
+                </span>
+              }
+            />
 
             <div className="px-2 py-5 text-center md:text-left">
               <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
@@ -467,7 +465,7 @@ const Paroisse: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               👥 Responsables du diocèse
             </h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Les personnes chargées de l'organisation et de
               l'accompagnement des communautés.
             </p>
@@ -476,9 +474,9 @@ const Paroisse: React.FC = () => {
           {/* CHARGEMENT */}
 
           {loadingResponsables && (
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+            <div className="rounded-2xl border border-amber-200 bg-white/85 p-10 text-gray-900 text-center dark:border-white/10 dark:bg-gray-900/85 dark:text-white">
               <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-blue-400" />
-              <p className="mt-4 text-gray-200">
+              <p className="mt-4 text-gray-700 dark:text-gray-200">
                 Chargement des responsables...
               </p>
             </div>
@@ -562,12 +560,12 @@ const Paroisse: React.FC = () => {
           {!loadingResponsables &&
             !errorResponsables &&
             responsables.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
+              <div className="rounded-2xl border border-amber-200 bg-white/85 p-10 text-gray-900 text-center dark:border-white/10 dark:bg-gray-900/85 dark:text-white">
                 <div className="text-5xl mb-4">👥</div>
-                <h3 className="font-bold text-white">
+                <h3 className="font-bold text-gray-900 dark:text-white">
                   Aucun responsable enregistré
                 </h3>
-                <p className="mt-2 text-sm text-gray-300">
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
                   Aucun responsable actif n'est actuellement affecté à ce diocèse.
                 </p>
               </div>
@@ -613,12 +611,12 @@ const Paroisse: React.FC = () => {
           </div>
 
           {parishes.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center">
+            <div className="rounded-2xl border border-amber-200 bg-white/85 p-8 text-gray-900 text-center dark:border-white/10 dark:bg-gray-900/85 dark:text-white">
               <div className="text-4xl mb-3">🏛️</div>
               <p className="font-semibold text-white">
                 Aucune paroisse enregistrée
               </p>
-              <p className="text-sm text-gray-300 mt-2">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
                 Aucune paroisse n'est actuellement répertoriée dans ce diocèse.
               </p>
             </div>
@@ -642,7 +640,7 @@ const Paroisse: React.FC = () => {
                     </span>
                   </div>
 
-                  <h3 className="mt-5 text-lg font-bold text-gray-900">
+                  <h3 className="mt-5 text-lg font-bold text-gray-900 dark:text-white">
                     {parish}
                   </h3>
 

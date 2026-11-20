@@ -461,26 +461,17 @@ const Inscrits: React.FC = () => {
 
                   <div className="relative z-10 grid items-center gap-7 md:grid-cols-2">
                     <div className="mx-auto w-full max-w-none text-center">
-                      <div
-                        className={`relative mx-auto h-[65vh] min-h-[340px] max-h-[680px] w-full overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 shadow-2xl ring-8 ring-amber-400/10 dark:bg-gray-800 ${principal.photo_url ? "cursor-zoom-in" : ""}`}
-                        onClick={() => principal.photo_url && window.open(principal.photo_url, "_blank", "noopener,noreferrer")}
-                        title={principal.photo_url ? "Cliquer pour agrandir la photo" : undefined}
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-amber-700 dark:text-amber-300">
-                          {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
-                        </div>
-
-                        {principal.photo_url && (
-                          <img
-                            src={principal.photo_url}
-                            alt={`Portrait de ${principal.prenom} ${principal.nom}`}
-                            className="absolute inset-0 h-full w-full object-cover"
-                            onError={(event) => {
-                              event.currentTarget.style.display = "none";
-                            }}
-                          />
-                        )}
-                      </div>
+                      <UserAvatar
+                        photoUrl={principal.photo_url}
+                        name={`${principal.prenom} ${principal.nom}`}
+                        containerClassName="relative mx-auto flex h-[65vh] min-h-[340px] max-h-[680px] w-full items-center justify-center overflow-hidden rounded-2xl border-4 border-amber-400 bg-amber-100 text-6xl font-black text-amber-700 shadow-2xl ring-8 ring-amber-400/10 dark:bg-gray-800 dark:text-amber-300"
+                        imageClassName="absolute inset-0 h-full w-full object-cover object-top"
+                        fallback={
+                          <span>
+                            {(principal.prenom?.[0] || "")}{(principal.nom?.[0] || "")}
+                          </span>
+                        }
+                      />
 
                       <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-100 px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
                         ★ {principal.is_primary

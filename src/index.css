@@ -43,7 +43,6 @@
 /* 🌠 Application sur le body */
 body {
   background-color: black; /* important pour ta demande */
-  background-image: url('/images/background.jpg');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
@@ -235,30 +234,69 @@ body {
 html:not(.dark) .theme-adaptive {
   color: #292524;
 }
-html:not(.dark) .theme-adaptive [class*="bg-black/"],
-html:not(.dark) .theme-adaptive [class*="bg-slate-950"],
-html:not(.dark) .theme-adaptive [class*="from-[#171717]"],
-html:not(.dark) .theme-adaptive [class*="from-[#241c0d]"] {
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="bg-black/"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="bg-slate-950"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="from-[#171717]"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="from-[#241c0d]"] {
   background-color: #fffdf7 !important;
   background-image: none !important;
   border-color: rgba(184, 134, 11, .28);
   color: #292524;
 }
-html:not(.dark) .theme-adaptive [class~="text-white"]:not(button):not(a),
-html:not(.dark) .theme-adaptive [class~="text-gray-300"],
-html:not(.dark) .theme-adaptive [class~="text-gray-400"],
-html:not(.dark) .theme-adaptive [class~="text-slate-300"],
-html:not(.dark) .theme-adaptive [class~="text-slate-400"] {
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-white"]:not(button):not(a),
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-gray-300"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-gray-400"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-slate-300"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-slate-400"] {
   color: #44403c !important;
 }
-html:not(.dark) .theme-adaptive input,
-html:not(.dark) .theme-adaptive textarea,
+html:not(.dark) .theme-adaptive input:not(.theme-fixed-dark):not(.theme-fixed-dark *),
+html:not(.dark) .theme-adaptive textarea:not(.theme-fixed-dark):not(.theme-fixed-dark *),
 html:not(.dark) .theme-adaptive select {
   background-color: #fff !important;
   color: #292524 !important;
   border-color: #d6c59a;
 }
-html:not(.dark) .theme-adaptive input::placeholder,
-html:not(.dark) .theme-adaptive textarea::placeholder {
+html:not(.dark) .theme-adaptive input:not(.theme-fixed-dark * )::placeholder,
+html:not(.dark) .theme-adaptive textarea:not(.theme-fixed-dark * )::placeholder {
   color: #78716c !important;
 }
+
+/* =====================================================
+   RENFORCEMENT DU THEME CLAIR
+   Pages utilisant la classe theme-adaptive
+   ===================================================== */
+
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="from-[#"] {
+  background-color: #fffdf7 !important;
+  background-image: none !important;
+  border-color: rgba(184, 134, 11, 0.30) !important;
+  color: #292524;
+}
+
+/* Fonds noirs translucides */
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="bg-black/"] {
+  background-color: #fff8e7 !important;
+  background-image: none !important;
+  border-color: rgba(184, 134, 11, 0.25);
+}
+
+/* Textes initialement trop clairs pour le fond blanc */
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-amber-100"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-amber-200"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-slate-100"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-slate-200"] {
+  color: #78350f !important;
+}
+
+/* Textes dorés secondaires */
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class*="text-amber-300"] {
+  color: #92400e !important;
+}
+
+/* Textes gris secondaires */
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-slate-500"],
+html:not(.dark) .theme-adaptive :not(.theme-fixed-dark):not(.theme-fixed-dark *)[class~="text-slate-400"] {
+  color: #57534e !important;
+}
+

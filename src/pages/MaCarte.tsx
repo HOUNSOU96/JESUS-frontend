@@ -253,7 +253,7 @@ const MaCarte: React.FC = () => {
 
       <div className="grid gap-7 lg:grid-cols-2">
         <section className="space-y-5">
-          <div className="overflow-hidden rounded-3xl border border-amber-300/30 bg-slate-950/85 shadow-2xl">
+          <div className="theme-fixed-dark overflow-hidden rounded-3xl border border-amber-300/30 bg-slate-950/85 shadow-2xl">
             <div className="relative min-h-56 overflow-hidden p-6">
               <div className="absolute inset-0 bg-[url('/jesus.jpeg')] bg-cover bg-center opacity-20" />
               <div className="absolute inset-0 bg-gradient-to-br from-blue-950/95 via-blue-950/80 to-amber-950/50" />
