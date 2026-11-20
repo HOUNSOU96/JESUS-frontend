@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import BackgroundSlideshow from "@/components/BackgroundSlideshow";
 import { Link, useNavigate } from "react-router-dom";
 import { worldCountries } from "@/data";
 import api from "@/utils/axios";
@@ -564,16 +565,25 @@ export default function Inscription() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8 dark:bg-gray-950 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="relative min-h-screen overflow-hidden bg-transparent px-4 py-8 sm:px-6 lg:px-8">
+      <BackgroundSlideshow />
+      <div className="relative z-20 mx-auto max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-xl dark:border-gray-800 dark:bg-gray-900"
+          className="overflow-hidden rounded-3xl border border-white/20 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-900/95"
         >
           <div className="bg-gradient-to-r from-blue-950 via-blue-800 to-blue-700 px-6 py-9 text-white sm:px-10">
             <div className="mx-auto max-w-2xl text-center">
+              <div className="mx-auto mb-5 h-20 w-20 overflow-hidden rounded-3xl shadow-lg shadow-blue-950/30 ring-2 ring-white/30">
+                <img
+                  src="/jesus.jpeg"
+                  alt="Saint Enfant Jésus"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+
               <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-blue-200">
                 Confrérie Saint Enfant Jésus
               </p>
