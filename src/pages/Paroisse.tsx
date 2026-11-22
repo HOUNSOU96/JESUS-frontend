@@ -355,7 +355,19 @@ const Paroisse: React.FC = () => {
     if (leaders.length === 0) return null;
 
     const principal =
-      leaders.find((leader) => leader.is_primary) || leaders[0];
+      groupName === "diocese"
+        ? leaders.find((leader) => {
+            const role = leader.role_name
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .toLowerCase();
+
+            return role.includes("aumonier") &&
+              role.includes("diocesain");
+          }) ||
+          leaders.find((leader) => leader.is_primary) ||
+          leaders[0]
+        : leaders.find((leader) => leader.is_primary) || leaders[0];
 
     const autres = leaders.filter(
       (leader) => leader.id !== principal.id

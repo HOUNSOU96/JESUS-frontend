@@ -258,7 +258,17 @@ const Pays: React.FC = () => {
 
           {!loading && !error && responsables.length > 0 && (() => {
             const principal =
-              responsables.find((r) => r.is_primary) || responsables[0];
+              responsables.find((r) => {
+                const role = r.role_name
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "")
+                  .toLowerCase();
+
+                return role.includes("aumonier") &&
+                  role.includes("national");
+              }) ||
+              responsables.find((r) => r.is_primary) ||
+              responsables[0];
 
             const autres = responsables.filter(
               (r) => r.id !== principal.id
