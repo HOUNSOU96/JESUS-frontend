@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import PublicationsManager from "@/components/PublicationsManager";
 
 const prayers = [
   {
@@ -130,6 +131,16 @@ const Prieres: React.FC = () => {
           </Link>
         ))}
       </div>
+
+      <PublicationsManager
+        section="priere"
+        categoryOptions={[
+          { value: "neuvaine", label: "La Neuvaine" },
+          { value: "lundi", label: "Prière du lundi" },
+          { value: "avent", label: "Temps de l’Avent" },
+          { value: "25", label: "Prière du 25" },
+        ]}
+      />
 
       <motion.div
         initial={{ opacity: 0 }}

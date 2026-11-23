@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import PublicationsManager from "@/components/PublicationsManager";
 
 type Category = {
   id: string;
@@ -266,101 +267,18 @@ const EnseignementSpiritualite: React.FC = () => {
         </div>
       </section>
 
-      {/* Bibliothèque audio */}
-      <section className="relative mt-14">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em]
-                          text-amber-400/70">
-              Votre espace d'écoute
-            </p>
-            <h2 className="mt-2 text-2xl font-black text-amber-100 sm:text-3xl">
-              Enseignements audio
-            </h2>
-          </div>
-
-          {selectedCategory !== "tous" && (
-            <button
-              type="button"
-              onClick={() => setSelectedCategory("tous")}
-              className="rounded-full border border-amber-300/30 px-4 py-2
-                         text-xs font-semibold text-amber-200 transition
-                         hover:bg-amber-300/10"
-            >
-              Voir tous les thèmes
-            </button>
-          )}
-        </div>
-
-        {visibleTeachings.length > 0 ? (
-          <div className="grid gap-4">
-            {visibleTeachings.map((teaching, index) => (
-              <motion.article
-                key={teaching.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.08 }}
-                className="rounded-3xl border border-amber-300/20
-                           bg-gradient-to-br from-[#1b170e] to-[#090909]
-                           p-5 shadow-xl sm:p-7"
-              >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex h-14 w-14 shrink-0 items-center
-                                  justify-center rounded-2xl
-                                  border border-amber-300/30
-                                  bg-amber-300/10 text-2xl">
-                    🎧
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg font-black text-amber-100">
-                      {teaching.title}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-400">
-                      {teaching.description}
-                    </p>
-                    <p className="mt-2 text-xs text-amber-300/70">
-                      {teaching.speaker} • {teaching.duration}
-                    </p>
-                  </div>
-                </div>
-                <audio
-                  controls
-                  preload="none"
-                  className="mt-5 w-full"
-                  src={teaching.src}
-                >
-                  Votre navigateur ne prend pas en charge la lecture audio.
-                </audio>
-              </motion.article>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-[2rem] border border-dashed
-                          border-amber-300/30 bg-gradient-to-br
-                          from-[#1c180f]/95 to-[#090909]/95
-                          px-6 py-12 text-center sm:px-12">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center
-                            rounded-full border border-amber-300/25
-                            bg-amber-300/10 text-4xl">
-              🎙️
-            </div>
-            <h3 className="mt-6 text-xl font-black text-amber-100">
-              Les enseignements arrivent bientôt
-            </h3>
-            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-400">
-              Cette bibliothèque accueillera prochainement des enseignements
-              audio pour accompagner votre formation et votre vie spirituelle.
-              Revenez découvrir les prochaines publications.
-            </p>
-            <div className="mx-auto mt-6 h-px w-24
-                            bg-gradient-to-r from-transparent
-                            via-amber-400/60 to-transparent" />
-            <p className="mt-5 text-xs italic text-amber-300/70">
-              « Seigneur, apprends-nous à grandir dans ta Parole. »
-            </p>
-          </div>
-        )}
-      </section>
+      <PublicationsManager
+        section="enseignement"
+        category={selectedCategory}
+        categoryOptions={[
+          { value: "foi", label: "Foi et vie chrétienne" },
+          { value: "enfant-jesus", label: "Saint Enfant Jésus de Prague" },
+          { value: "biblique", label: "Enseignements bibliques" },
+          { value: "priere", label: "Vie de prière" },
+          { value: "spiritualite", label: "Spiritualité et méditation" },
+          { value: "confrerie", label: "Formation des membres" },
+        ]}
+      />
 
       {/* Citation finale */}
       <motion.div

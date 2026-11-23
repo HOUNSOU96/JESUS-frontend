@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "@/utils/axios";
+import PublicationsManager from "@/components/PublicationsManager";
 
 interface Announcement {
   id: number;
@@ -156,6 +157,8 @@ const PubliciteModal: React.FC<PubliciteModalProps> = ({ onClose }) => {
               })}
             </div>
           )}
+
+          <PublicationsManager section="publicite" compact />
 
           <div className="mt-6 rounded-2xl border border-amber-400/40
                           bg-gradient-to-r from-amber-100 to-yellow-50
