@@ -6,6 +6,7 @@ import api from "@/utils/axios";
 import BackgroundSlideshow from "@/components/BackgroundSlideshow";
 import ProfilePhotoEditor from "@/components/ProfilePhotoEditor";
 import InstallUpdatePrompt from "@/components/InstallUpdatePrompt";
+import PubliciteModal from "@/components/PubliciteModal";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [publiciteOpen, setPubliciteOpen] = useState(false);
   const [audioStatus, setAudioStatus] = useState({
     isPlaying: false,
     ready: false,
@@ -131,27 +133,53 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {children}
       </main>
 
-      {/* Bouton Menu fixe en bas de l'écran */}
+      {/* Boutons flottants Menu et Publicité */}
       {user && (
-        <button
-          type="button"
-          onClick={() => setMenuOpen(true)}
-          aria-label="Ouvrir le menu"
-          aria-expanded={menuOpen}
-          className="fixed bottom-10 left-1/2 z-50 -translate-x-1/2
-                     flex items-center justify-center gap-3 rounded-full
-                     border border-amber-300/70
-                     bg-gradient-to-r from-[#17130b] via-black to-[#17130b]
-                     px-8 py-3.5 text-base font-black tracking-wide
-                     text-amber-200 shadow-[0_0_28px_rgba(234,179,8,0.28)]
-                     backdrop-blur-xl transition duration-300
-                     hover:scale-105 hover:border-yellow-200
-                     hover:shadow-[0_0_35px_rgba(234,179,8,0.42)]
-                     active:scale-95"
-        >
-          <span className="text-xl">☰</span>
-          <span>Menu</span>
-        </button>
+        <div className="fixed bottom-10 left-1/2 z-50 flex
+                        -translate-x-1/2 items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Ouvrir le menu"
+            aria-expanded={menuOpen}
+            className="flex items-center justify-center gap-3 rounded-full
+                       border border-amber-300/70
+                       bg-gradient-to-r from-[#17130b] via-black to-[#17130b]
+                       px-8 py-3.5 text-base font-black tracking-wide
+                       text-amber-200 shadow-[0_0_28px_rgba(234,179,8,0.28)]
+                       backdrop-blur-xl transition duration-300
+                       hover:scale-105 hover:border-yellow-200
+                       hover:shadow-[0_0_35px_rgba(234,179,8,0.42)]
+                       active:scale-95"
+          >
+            <span className="text-xl">☰</span>
+            <span>Menu</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPubliciteOpen(true)}
+            aria-label="Ouvrir l'espace publicitaire"
+            aria-expanded={publiciteOpen}
+            className="flex items-center justify-center gap-2 rounded-full
+                       border border-amber-300/70
+                       bg-gradient-to-r from-[#17130b] via-black to-[#17130b]
+                       px-4 py-3.5 text-sm font-black tracking-wide
+                       text-amber-200 shadow-[0_0_28px_rgba(234,179,8,0.28)]
+                       backdrop-blur-xl transition duration-300
+                       hover:scale-105 hover:border-yellow-200
+                       hover:shadow-[0_0_35px_rgba(234,179,8,0.42)]
+                       active:scale-95 sm:px-6 sm:text-base"
+          >
+            <span className="text-lg sm:text-xl">📢</span>
+            <span>Publicité</span>
+          </button>
+        </div>
+      )}
+
+      {/* Galerie publicitaire indépendante */}
+      {user && publiciteOpen && (
+        <PubliciteModal onClose={() => setPubliciteOpen(false)} />
       )}
 
       {/* Fenêtre du menu */}
