@@ -221,7 +221,7 @@ export default function InstallUpdatePrompt() {
                 <path d="m7 10 5 5 5-5" />
                 <path d="M5 17v3h14v-3" />
               </svg>
-              {installEvent ? "Installer l'application" : "Découvrir l'installation"}
+              INSTALLATION
             </button>
 
             {showHelp && (

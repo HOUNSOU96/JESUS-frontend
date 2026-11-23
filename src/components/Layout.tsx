@@ -280,6 +280,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Link>
 
               <Link
+                to="/enseignement-spiritualite"
+                onClick={() => setMenuOpen(false)}
+                className={menuLinkClass}
+              >
+                <span className="text-xl">🕊️</span>
+                <span>Enseignement / Spiritualité</span>
+              </Link>
+
+              <Link
                 to="/documents"
                 onClick={() => setMenuOpen(false)}
                 className={menuLinkClass}
