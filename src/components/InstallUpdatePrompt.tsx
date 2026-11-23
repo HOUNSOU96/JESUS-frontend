@@ -40,6 +40,7 @@ export default function InstallUpdatePrompt() {
     const handleInstall = (event: Event) => {
       event.preventDefault();
       setInstallEvent(event as InstallPromptEvent);
+      setShowHelp(false);
     };
 
     const handleInstalled = () => {
@@ -90,35 +91,46 @@ export default function InstallUpdatePrompt() {
   };
 
   const installApp = async () => {
-    if (!installEvent) {
-      setShowHelp((previous) => !previous);
+    const currentEvent = installEvent;
+
+    if (!currentEvent) {
+      setShowHelp(true);
       return;
     }
 
+    // L'événement natif est utilisable une seule fois.
+    setInstallEvent(null);
+
     progress.start(
       "Installation de JESUS",
-      "Préparation de la demande d'installation. Veuillez patienter..."
+      "Ouverture de la fenêtre native d'installation..."
     );
 
     try {
-      await installEvent.prompt();
-      const choice = await installEvent.userChoice;
+      await currentEvent.prompt();
+      const choice = await currentEvent.userChoice;
 
       if (choice.outcome === "accepted") {
-        setInstallEvent(null);
         dismissInstall();
+        setShowHelp(false);
+
         progress.success(
           "JESUS a été accepté pour installation sur votre appareil."
         );
       } else {
-        progress.error("Installation annulée. Vous pourrez réessayer.");
+        setShowHelp(true);
+
+        progress.error(
+          "Installation annulée. Vous pourrez réessayer lorsque le navigateur proposera à nouveau l'installation."
+        );
       }
     } catch (error) {
       console.error("Erreur installation PWA :", error);
-      progress.error(
-        "Une erreur est survenue pendant la demande d'installation. Vous pouvez réessayer ou consulter les instructions."
-      );
       setShowHelp(true);
+
+      progress.error(
+        "Installation directe indisponible. Consultez les instructions pour installer JESUS."
+      );
     }
   };
 
@@ -221,7 +233,9 @@ export default function InstallUpdatePrompt() {
                 <path d="m7 10 5 5 5-5" />
                 <path d="M5 17v3h14v-3" />
               </svg>
-              INSTALLATION
+              {installEvent
+                ? "INSTALLER JESUS"
+                : "COMMENT INSTALLER JESUS"}
             </button>
 
             {showHelp && (
