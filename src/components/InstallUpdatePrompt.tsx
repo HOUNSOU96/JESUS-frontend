@@ -7,6 +7,42 @@ interface InstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+// Gestion centralisée de l'événement natif PWA.
+// L'événement est capturé dès le chargement du module,
+// même avant le montage du composant React.
+
+let deferredInstallPrompt: InstallPromptEvent | null = null;
+
+const installPromptSubscribers = new Set<
+  (event: InstallPromptEvent | null) => void
+>();
+
+const installedSubscribers = new Set<() => void>();
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (event: Event) => {
+    event.preventDefault();
+
+    deferredInstallPrompt = event as InstallPromptEvent;
+
+    installPromptSubscribers.forEach((subscriber) => {
+      subscriber(deferredInstallPrompt);
+    });
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+
+    installPromptSubscribers.forEach((subscriber) => {
+      subscriber(null);
+    });
+
+    installedSubscribers.forEach((subscriber) => {
+      subscriber();
+    });
+  });
+}
+
 export default function InstallUpdatePrompt() {
   const progress = useOperationProgress();
 
@@ -37,10 +73,12 @@ export default function InstallUpdatePrompt() {
   const showInstall = !isStandalone && !dismissed;
 
   useEffect(() => {
-    const handleInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallEvent(event as InstallPromptEvent);
-      setShowHelp(false);
+    const syncInstallEvent = (event: InstallPromptEvent | null) => {
+      setInstallEvent(event);
+
+      if (event) {
+        setShowHelp(false);
+      }
     };
 
     const handleInstalled = () => {
@@ -49,8 +87,11 @@ export default function InstallUpdatePrompt() {
       sessionStorage.setItem("jesus-install-dismissed", "true");
     };
 
-    window.addEventListener("beforeinstallprompt", handleInstall);
-    window.addEventListener("appinstalled", handleInstalled);
+    installPromptSubscribers.add(syncInstallEvent);
+    installedSubscribers.add(handleInstalled);
+
+    // Récupérer également un événement arrivé avant le montage React.
+    syncInstallEvent(deferredInstallPrompt);
 
     let cleanupInterval: (() => void) | undefined;
 
@@ -79,8 +120,8 @@ export default function InstallUpdatePrompt() {
     }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleInstall);
-      window.removeEventListener("appinstalled", handleInstalled);
+      installPromptSubscribers.delete(syncInstallEvent);
+      installedSubscribers.delete(handleInstalled);
       cleanupInterval?.();
     };
   }, []);
@@ -99,7 +140,12 @@ export default function InstallUpdatePrompt() {
     }
 
     // L'événement natif est utilisable une seule fois.
+    deferredInstallPrompt = null;
     setInstallEvent(null);
+
+    installPromptSubscribers.forEach((subscriber) => {
+      subscriber(null);
+    });
 
     progress.start(
       "Installation de JESUS",
