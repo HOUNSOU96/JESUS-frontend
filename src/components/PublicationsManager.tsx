@@ -6,7 +6,7 @@ type Publication = {
   id: number;
   section: string;
   category?: string | null;
-  content_type: "texte" | "audio" | "video";
+  content_type: "texte" | "audio" | "video" | "image";
   title: string;
   description?: string | null;
   text_content?: string | null;
@@ -34,7 +34,7 @@ const emptyForm = {
   title: "",
   description: "",
   category: "",
-  content_type: "texte" as "texte" | "audio" | "video",
+  content_type: "texte" as "texte" | "audio" | "video" | "image",
   text_content: "",
   external_video_url: "",
   contact_name: "",
@@ -63,6 +63,19 @@ const PublicationsManager: React.FC<Props> = ({
   const [editing, setEditing] = useState<Publication | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [media, setMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string>("");
+
+  useEffect(() => {
+    if (!media) {
+      setMediaPreview("");
+      return;
+    }
+
+    const preview = URL.createObjectURL(media);
+    setMediaPreview(preview);
+
+    return () => URL.revokeObjectURL(preview);
+  }, [media]);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -138,6 +151,10 @@ const PublicationsManager: React.FC<Props> = ({
     }
     if (!editing && form.content_type === "video" && !media && !form.external_video_url.trim()) {
       setError("Ajoutez un fichier vidéo ou un lien vidéo.");
+      return;
+    }
+    if (!editing && form.content_type === "image" && !media) {
+      setError("Veuillez sélectionner une image.");
       return;
     }
     if (form.content_type === "texte" && !form.text_content.trim()) {
@@ -250,7 +267,7 @@ const PublicationsManager: React.FC<Props> = ({
                 <select value={form.content_type} onChange={(e) => setForm({ ...form, content_type: e.target.value as any })} className="mt-1 w-full rounded-xl border border-amber-300/20 bg-black p-3 text-white">
                   <option value="texte">Texte</option>
                   <option value="audio">Audio</option>
-                  <option value="video">Vidéo</option>
+                  <option value="video">Vidéo</option>\n                  <option value="image">Image</option>
                 </select>
               </label>
             )}
@@ -282,11 +299,33 @@ const PublicationsManager: React.FC<Props> = ({
             </label>
           )}
 
-          {(form.content_type === "audio" || form.content_type === "video") && (
-            <label className="block text-sm text-slate-300">
-              Fichier {form.content_type === "audio" ? "audio" : "vidéo"} {editing ? "(facultatif si vous conservez le fichier actuel)" : "*"}
-              <input type="file" accept={form.content_type === "audio" ? "audio/*" : "video/*"} onChange={(e) => setMedia(e.target.files?.[0] || null)} className="mt-1 block w-full rounded-xl border border-amber-300/20 bg-black p-3 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-amber-400 file:px-3 file:py-2 file:font-bold file:text-black" />
-            </label>
+          {(form.content_type === "audio" || form.content_type === "video" || form.content_type === "image") && (
+            <div>
+              <label className="block text-sm text-slate-300">
+                Fichier {form.content_type === "audio" ? "audio" : form.content_type === "video" ? "vidéo" : "image"} {editing ? "(facultatif si vous conservez le fichier actuel)" : "*"}
+                <input
+                  type="file"
+                  accept={
+                    form.content_type === "audio" ? "audio/*" :
+                    form.content_type === "video" ? "video/*" :
+                    "image/jpeg,image/png,image/webp"
+                  }
+                  onChange={(e) => setMedia(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full rounded-xl border border-amber-300/20 bg-black p-3 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-amber-400 file:px-3 file:py-2 file:font-bold file:text-black"
+                />
+              </label>
+
+              {form.content_type === "image" && (mediaPreview || (editing && editing.media_url)) && (
+                <div className="mt-3">
+                  <p className="mb-2 text-xs text-amber-200">Aperçu de l'image</p>
+                  <img
+                    src={mediaPreview || editing?.media_url || ""}
+                    alt="Aperçu de la publication"
+                    className="max-h-64 max-w-full rounded-xl border border-amber-300/30 object-contain"
+                  />
+                </div>
+              )}
+            </div>
           )}
 
           {form.content_type === "video" && (
@@ -342,7 +381,7 @@ const PublicationsManager: React.FC<Props> = ({
           <p className="text-3xl">📭</p>
           <p className="mt-3 font-bold text-amber-100">Aucune publication pour le moment</p>
           <p className="mt-1 text-sm text-slate-400">
-            {isAdmin ? "Vous pouvez ajouter un texte, un audio ou une vidéo." : "Les prochaines publications apparaîtront ici."}
+            {isAdmin ? "Vous pouvez ajouter un texte, un audio, une vidéo ou une image." : "Les prochaines publications apparaîtront ici."}
           </p>
         </div>
       ) : (
@@ -365,6 +404,15 @@ const PublicationsManager: React.FC<Props> = ({
               </div>
 
               {item.text_content && <p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-200">{item.text_content}</p>}
+
+              {item.content_type === "image" && item.media_url && (
+                <img
+                  src={item.media_url}
+                  alt={item.title}
+                  loading="lazy"
+                  className="mt-4 max-h-[520px] w-full rounded-xl bg-black object-contain"
+                />
+              )}
 
               {item.content_type === "audio" && item.media_url && (
                 <audio controls preload="none" src={item.media_url} className="mt-4 w-full" />

@@ -20,6 +20,7 @@ import ValidationCartes from "./pages/ValidationCartes";
 import Documents from "./pages/Documents";
 import MonProfil from "./pages/MonProfil";
 import Prieres from "./pages/Prieres";
+import Publicite from "./pages/Publicite";
 import EnseignementSpiritualite from "./pages/EnseignementSpiritualite";
 import ChoixLanguePriere from "./pages/ChoixLanguePriere";
 import AudiosPriere from "./pages/AudiosPriere";
@@ -75,6 +76,15 @@ const AnimatedRoutes: React.FC = () => {
           element={
             <RequireAuth>
               <Layout><Prieres /></Layout>
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/publicite"
+          element={
+            <RequireAuth>
+              <Layout><Publicite /></Layout>
             </RequireAuth>
           }
         />

@@ -6,7 +6,6 @@ import api from "@/utils/axios";
 import BackgroundSlideshow from "@/components/BackgroundSlideshow";
 import ProfilePhotoEditor from "@/components/ProfilePhotoEditor";
 import InstallUpdatePrompt from "@/components/InstallUpdatePrompt";
-import PubliciteModal from "@/components/PubliciteModal";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,7 +15,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [publiciteOpen, setPubliciteOpen] = useState(false);
   const [audioStatus, setAudioStatus] = useState({
     isPlaying: false,
     ready: false,
@@ -156,11 +154,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <span>Menu</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setPubliciteOpen(true)}
+          <Link
+            to="/publicite"
             aria-label="Ouvrir l'espace publicitaire"
-            aria-expanded={publiciteOpen}
             className="flex items-center justify-center gap-2 rounded-full
                        border border-amber-300/70
                        bg-gradient-to-r from-[#17130b] via-black to-[#17130b]
@@ -173,13 +169,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             <span className="text-lg sm:text-xl">📢</span>
             <span>Publicité</span>
-          </button>
+          </Link>
         </div>
-      )}
-
-      {/* Galerie publicitaire indépendante */}
-      {user && publiciteOpen && (
-        <PubliciteModal onClose={() => setPubliciteOpen(false)} />
       )}
 
       {/* Fenêtre du menu */}
